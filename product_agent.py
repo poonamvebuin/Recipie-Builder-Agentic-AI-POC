@@ -5,6 +5,8 @@ from fuzzywuzzy import fuzz
 from fuzzywuzzy import process
 from dotenv import load_dotenv
 import os
+import spacy
+
 
 load_dotenv()
 
@@ -35,7 +37,7 @@ def get_latest_recipe_memory():
     query = """
         SELECT memory
         FROM ai.agent_sessions
-        ORDER BY updated_at ASC
+        ORDER BY created_at DESC
         LIMIT 1;
     """
     cursor = conn.cursor()
@@ -70,18 +72,35 @@ def extract_ingredients_block(recipe_text):
     content = recipe_text["runs"][-1]["response"]["content"]
     # print("content List:", content)
 
-    ingredients_section = re.search(r"#### Ingredients(.*?)(#### Instructions|### Recipe Selection|$)", content, re.DOTALL)
+    # ingredients_section = re.search(r"(####?\s*Ingredients.*?)(####?|\n###|\n\s*$)", content, re.DOTALL | re.IGNORECASE)
 
-    if ingredients_section:
-        ingredients_content = ingredients_section.group(1).strip()
-        # print("Extracted Ingredients Content:")
-        # print(ingredients_content) 
-        return ingredients_content
+    # if ingredients_section:
+    #     ingredients_content = ingredients_section.group(1).strip()
+    #     # print("Extracted Ingredients Content:")
+    #     # print(ingredients_content) 
+    #     return ingredients_content
 
-    else:
-        print("No ingredients section found.")
-        return ""
-    
+    # else:
+    #     print("No ingredients section found.")
+    #     return ""
+    nlp = spacy.load("en_core_web_sm")
+
+    # Process the text with spaCy
+    doc = nlp(content)
+
+    # Extract nouns (likely ingredients)
+    ingredients = []
+
+    for token in doc:
+        if token.pos_ == "NOUN":
+            ingredients.append(token.text)
+
+    filtered_ingredients = [item for item in ingredients]
+
+    # Remove duplicates
+    unique_ingredients = list(set(filtered_ingredients))
+
+    return unique_ingredients
 
 
 def find_similar_products(ingredients, products_db):
@@ -120,22 +139,23 @@ def get_available_ingredients():
         return []
 
     ingredient_names = extract_ingredients_block(memory)
-    # print('------ingredient_names-----', ingredient_names)
+    print('------ingredient_names-----', ingredient_names)
     products_db = search_products()
     print('---------products_db', products_db)
     
     for i, product in enumerate(products_db):
         products_db[i] = list(product)
  
-    ingredient_names_list = [ingredient.strip().lower() for ingredient in ingredient_names.split('\n') if ingredient]
-    print('---------ingredient_names_list', ingredient_names_list)
+    # ingredient_names_list = [ingredient.strip().lower() for ingredient in ingredient_names.split('\n') if ingredient]
+    # print('---------ingredient_names_list', ingredient_names_list)
     
-    matching_products = find_similar_products(ingredient_names_list, products_db)
+    # matching_products = find_similar_products(ingredient_names_list, products_db)
+    matching_products = find_similar_products(ingredient_names, products_db)
     # print('---------matching_products', matching_products)
 
     result_strings = []
     for product in matching_products:
-        result_strings.append(f"Product: {product[0]}, Category: {product[4]}, Brand: {product[7]}, Price: {product[2]}Rs")
+        result_strings.append(f"Product_name: {product[0]}, Description: {product[1]}, Category: {product[4]}, Brand: {product[7]}, Price: {product[2]}Rs, Weight: {product[5]}{product[6]}")
     return "\n".join(result_strings)
 
 

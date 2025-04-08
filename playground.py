@@ -84,6 +84,13 @@ recipe_agent = Agent(
         - Note allergen warnings
         - Highlight make-ahead steps
         - Suggest side dish pairings
+
+        Ingredients Section:
+        - Present ingredients in a structured list with measurements.
+        - Clearly list each ingredient under the Ingredients heading, with units and amounts.
+        - Use bullet points or numbered lists for clarity.
+        - Ensure any special dietary notes or substitutions are included next to the relevant ingredients.
+        
     """),
 
     markdown=True,
