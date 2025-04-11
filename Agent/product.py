@@ -1,6 +1,6 @@
-from fuzzywuzzy import fuzz, process
+from fuzzywuzzy import fuzz, process #rapidfuzz
 from deep_translator import GoogleTranslator
-from Database import search_products
+from Database.database import search_products
 
 def find_similar_products(ingredients, products_db):
     results = set()
@@ -17,8 +17,9 @@ def find_similar_products(ingredients, products_db):
 
 def get_available_ingredients(recipe_ingredients, language="English"):
     ingredient_list = [i.strip() for i in recipe_ingredients.split('\n') if i]
+    print('---ingredient_list----', ingredient_list)
     
-    if language.lower() != "english":
+    if language.lower() != "English":
         try:
             ingredient_list = [
                 GoogleTranslator(source='auto', target='en').translate(i)
@@ -28,10 +29,11 @@ def get_available_ingredients(recipe_ingredients, language="English"):
             pass
 
     products_db = search_products()
+    print('----products_db---', products_db)
     products_db = [list(p) for p in products_db]
 
     matches = find_similar_products([i.lower() for i in ingredient_list], products_db)
-
+    print('--------matches', matches)
     return [
         {
             "Product_name": p[0], "Description": p[1], "Price": f"{p[2]}Rs",
