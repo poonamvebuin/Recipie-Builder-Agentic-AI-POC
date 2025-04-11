@@ -13,7 +13,7 @@ def get_supervisor_agent():
         2. Only after getting these preferences, suggest 4-5 possible recipes.
         3. Wait for the user to choose one before generating a full prompt.
 
-        Don't suggest recipes immediately — first gather preferences unless the request already includes enough detail.
+        Never provide recipe, provide only suggessions after gatheing preferences unless the request already includes enough detail.
         """,
     )
     return agent
