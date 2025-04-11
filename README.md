@@ -1,8 +1,8 @@
-# 🧪 Recipe Builder - Agentic AI POC
+# Recipe Builder - Agentic AI POC
 
 A simple Proof of Concept (POC) for building recipes using an agentic AI model.
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these steps to set up and run the project on your local machine.
 
