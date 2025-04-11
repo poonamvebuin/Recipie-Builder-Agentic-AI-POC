@@ -16,7 +16,7 @@ language_options = ["English", "Hindi", "Spanish", "French", "German", "Italian"
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
 
 # App Header
-st.title("🍳 Recipe Creation Assistant 🍳")
+# st.title("🍳 Recipe Creation Assistant 🍳")
 st.header("🧑‍🍳 Chat with Recipe Assistant")
 
 # Session State Initialization
@@ -40,9 +40,9 @@ if "dish_suggestions" not in st.session_state:
     st.session_state.dish_suggestions = []
 
 # Show full chat history always
-for msg in st.session_state.supervisor_history:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+# for msg in st.session_state.supervisor_history:
+#     with st.chat_message(msg["role"]):
+#         st.markdown(msg["content"])
 
 # Chat Input
 user_input = st.chat_input("Ask for a recipe suggestion...")
@@ -68,9 +68,13 @@ if user_input:
 
     if dish_suggestions:
         st.session_state.dish_suggestions = dish_suggestions
-        # Optionally reset old recipe
         st.session_state.final_dish_choice = None
         st.session_state.ready_for_recipe = False
+
+# Show full chat history always
+for msg in st.session_state.supervisor_history:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
 # Show suggestion buttons
 if st.session_state.dish_suggestions:
