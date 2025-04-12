@@ -48,12 +48,14 @@ if "dish_suggestions" not in st.session_state:
 user_input = st.chat_input("Ask for a recipe suggestion...")
 
 if user_input:
-    st.session_state.supervisor_history.append({"role": "user", "content": user_input})
+    st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
+    prompt = f"Generate response in {language}"
 
     response = st.session_state.supervisor_agent.run(
-        messages=st.session_state.supervisor_history,
+        messages=[{"role": "user", "content": f"{prompt} {user_input}"}],
         stream=False
     )
+    print('---------response', response)
 
     st.session_state.supervisor_history.append({"role": "assistant", "content": response.content})
 
