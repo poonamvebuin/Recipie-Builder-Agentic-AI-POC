@@ -12,7 +12,7 @@ st.set_page_config(page_title="Recipe Builder", layout="centered")
 
 # Sidebar - Language
 st.sidebar.header("🌐 Language Preferences")
-language_options = ["English", "Hindi", "Spanish", "French", "German", "Italian", "Japanese", "Chinese", "Arabic"]
+language_options = ["English","Japanese"]
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
 
 # App Header
@@ -49,25 +49,36 @@ user_input = st.chat_input("Ask for a recipe suggestion...")
 
 if user_input:
     st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
-    prompt = f"Generate response in {language}"
+    prompt = f"{user_input} generate response in {language}"
 
+    # response = st.session_state.supervisor_agent.run(
+    #     messages=[{"role": "user", "content": prompt}],
+    #     stream=False
+    # )
+    msg = [{"role": "user", "content": prompt}]
     response = st.session_state.supervisor_agent.run(
-        messages=[{"role": "user", "content": f"{prompt} {user_input}"}],
+        messages=msg,
         stream=False
     )
-    print('---------response', response)
 
     st.session_state.supervisor_history.append({"role": "assistant", "content": response.content})
 
     # Extract suggestions for button display
     dish_suggestions = []
     for line in response.content.splitlines():
-        if "." in line:
-            parts = line.split(".", 1)
-            suggestion = parts[1].strip()
-            if suggestion and not suggestion.endswith("?"):
-                dish_suggestions.append(suggestion)
+        line = line.strip()
+        if "." in line or "。" in line or "?" in line or "？" in line:
+            if "." in line:
+                parts = line.split(".", 1)
+            elif "。" in line:
+                parts = line.split("。", 1)
+            else:
+                parts = line.split("?", 1) 
 
+            suggestion = parts[1].strip() if len(parts) > 1 else parts[0].strip()
+
+            if suggestion and not (suggestion.endswith("?") or suggestion.endswith("？") or suggestion.endswith("）") or suggestion.endswith(")") or suggestion.endswith(".") or suggestion.endswith("。") or suggestion.endswith(":") or suggestion.endswith("！") or suggestion.endswith("：")):
+                dish_suggestions.append(suggestion)
     if dish_suggestions:
         st.session_state.dish_suggestions = dish_suggestions
         st.session_state.final_dish_choice = None

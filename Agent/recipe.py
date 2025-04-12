@@ -105,7 +105,7 @@ def get_agent():
         markdown=True,
         add_datetime_to_instructions=True,
         show_tool_calls=True,
-        storage=storage,
+        # storage=storage,
         response_model=RecipeOutput
     )
     return agent

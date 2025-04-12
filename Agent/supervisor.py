@@ -10,7 +10,7 @@ def get_supervisor_agent():
 
         Step-by-step:
         1. Ask clarifying questions if the user's request is general (e.g., preferred protein, vegetarian/non-vegetarian, allergies, spice level, or cook time).
-        2. Only after getting these preferences, suggest 4-5 possible recipes.
+        2. Only after getting these preferences, suggest 4-5 possible recipes. do not give description just gave recipee name without using "."
         3. Wait for the user to choose one before generating a full prompt.
 
         Never provide recipe, provide only suggessions after gatheing preferences unless the request already includes enough detail.
