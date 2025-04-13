@@ -1,29 +1,94 @@
-from typing import List, Optional, Dict
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, ConfigDict
 from agno.agent import Agent
 from agno.models.openai import OpenAIChat
 from agno.storage.postgres import PostgresStorage
 from textwrap import dedent
 import os
 from dotenv import load_dotenv
+import json
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 
+class VideoSource(BaseModel):
+    url: str
+    type: str
+    model_config = ConfigDict(extra='forbid')
+
+class VideoData(BaseModel):
+    poster_url: str
+    sources: List[VideoSource]
+    model_config = ConfigDict(extra='forbid')
+
 class RecipeOutput(BaseModel):
     recipe_title: str
-    cuisine_type: str
-    prep_time: str
-    cook_time: str
-    total_time: str
-    ingredients: str
-    instructions: List[str]
-    nutritional_info: str
-    difficulty_level: str
-    serving_size: str
-    storage_instructions: Optional[str]
-    extra_features: Optional[Dict[str, str]]
+    cuisine_type: Optional[str] = None
+    prep_time: Optional[str] = None
+    cook_time: Optional[str] = None
+    total_time: Optional[str] = None
+    ingredients: Optional[str] = None
+    instructions: Optional[List[str]] = None
+    nutritional_info: Optional[str] = None
+    difficulty_level: Optional[str] = None
+    serving_size: Optional[str] = None
+    storage_instructions: Optional[str] = None
+    extra_features: Optional[Dict[str, str]] = None
+    # image_url: Optional[str] = None
+    # video_data: Optional[VideoData] = None
+    # model_config = ConfigDict(
+    #     extra='forbid',
+    #     json_schema_extra={
+    #         "type": "object",
+    #         "properties": {
+    #             "recipe_title": {"type": "string"},
+    #             "cuisine_type": {"type": "string"},
+    #             "prep_time": {"type": "string"},
+    #             "cook_time": {"type": "string"},
+    #             "total_time": {"type": "string"},
+    #             "ingredients": {"type": "string"},
+    #             "instructions": {
+    #                 "type": "array",
+    #                 "items": {"type": "string"}
+    #             },
+    #             "nutritional_info": {"type": "string"},
+    #             "difficulty_level": {"type": "string"},
+    #             "serving_size": {"type": "string"},
+    #             "storage_instructions": {"type": "string"},
+    #             "extra_features": {
+    #                 "type": "object",
+    #                 "additionalProperties": {"type": "string"}
+    #             },
+    #             "image_url": {"type": "string"},
+    #             "video_data": {
+    #                 "type": "object",
+    #                 "additionalProperties": False,
+    #                 "properties": {
+    #                     "poster_url": {"type": "string"},
+    #                     "sources": {
+    #                         "type": "array",
+    #                         "items": {
+    #                             "type": "object",
+    #                             "additionalProperties": False,
+    #                             "properties": {
+    #                                 "url": {"type": "string"},
+    #                                 "type": {"type": "string"}
+    #                             },
+    #                             "required": ["url", "type"]
+    #                         }
+    #                     }
+    #                 },
+    #                 "required": ["poster_url", "sources"]
+    #             }
+    #         },
+    #         "required": ["recipe_title"]
+    #     }
+    # )
 
 def get_agent():
+    
     db_url = f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
              f"{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
     storage = PostgresStorage(
@@ -109,3 +174,251 @@ def get_agent():
         response_model=RecipeOutput
     )
     return agent
+
+# Load the recipe data
+recipes_path="recipe_data/all_recipes.json"
+with open(recipes_path, 'r', encoding='utf-8') as f:
+    recipes = json.load(f)
+
+# Initialize the sentence transformer
+model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Create embeddings for each recipe title
+title_embeddings = model.encode([recipe.get('title', '') for recipe in recipes])
+
+# Initialize the FAISS index
+dimension = title_embeddings.shape[1]
+title_index = faiss.IndexFlatL2(dimension)
+title_index.add(title_embeddings.astype('float32'))
+
+def extract_recipe_name(prompt):
+    """
+    Extract the recipe name from the prompt, handling various formats and languages.
+    
+    Args:
+        prompt: The user's prompt
+        
+    Returns:
+        The extracted recipe name
+    """
+    # Common patterns in different languages
+    patterns = [
+        # English patterns
+        r"recipe (?:for|of) (.+?)(?:\?|$)",
+        r"how (?:to|do I) (?:make|cook|prepare) (.+?)(?:\?|$)",
+        r"can you (?:give|share|provide) (?:me )?(?:the )?recipe (?:for|of) (.+?)(?:\?|$)",
+        r"what is the recipe (?:for|of) (.+?)(?:\?|$)",
+        r"show me (?:the )?recipe (?:for|of) (.+?)(?:\?|$)",
+        r"tell me (?:about|how to make) (.+?)(?:\?|$)",
+        r"i want (?:to make|to cook) (.+?)(?:\?|$)",
+        r"i need (?:a )?recipe (?:for|of) (.+?)(?:\?|$)",
+        
+        # Japanese patterns (romanized)
+        r"(.+?) no reshipi",
+        r"(.+?) no ryori",
+        r"(.+?) no tsukurikata",
+        r"(.+?) no tsukurihou",
+        r"(.+?) no tsukurikata wo oshiete",
+        r"(.+?) no reshipi wo kudasai",
+        
+        # Generic patterns (fallback)
+        r"(.+?)(?:\?|$)"
+    ]
+
+    patterns += [r'([\u3040-\u30ff\u4e00-\u9faf]+)\s*\(']
+
+    import re
+    
+    # Try each pattern
+    for pattern in patterns:
+        match = re.search(pattern, prompt, re.IGNORECASE)
+        if match:
+            recipe_name = match.group(1).strip()
+            # Remove common words that might be part of the prompt but not the recipe name
+            recipe_name = re.sub(r'^(the|a|an)\s+', '', recipe_name, flags=re.IGNORECASE)
+            matches = re.findall(r'([\u3040-\u30ff\u4e00-\u9faf]+)', recipe_name)
+            return matches[0] if matches else recipe_name.strip()
+    
+    # If no pattern matches, return the whole prompt
+    return prompt.strip()
+
+def check_recipe_exists(prompt, threshold=0.7):
+    """
+    Check if a recipe exists in the database based on the recipe name.
+    
+    Args:
+        prompt: The user's prompt
+        threshold: Similarity threshold (lower is more strict)
+        
+    Returns:
+        The matching recipe or None if no match found
+    """
+    # Extract the recipe name from the prompt
+    recipe_name = extract_recipe_name(prompt)
+    print(f"Extracted recipe name: {recipe_name}")
+    
+    # Encode the recipe name
+    query_embedding = model.encode([recipe_name])
+    
+    # Search by title
+    distances, indices = title_index.search(query_embedding.astype('float32'), k=3)
+    
+    # Store search results
+    search_results = []
+    
+    # Check if any matches are good enough
+    for i, distance in enumerate(distances[0]):
+        if distance < threshold:
+            matched_recipe = recipes[indices[0][i]]
+            print(f"Found match: {matched_recipe.get('title')} with distance {distance}")
+            
+            # Display image and video if available
+            if 'image_url' in matched_recipe and matched_recipe['image_url']:
+                # Handle both absolute and relative URLs
+                image_url = matched_recipe['image_url']
+                if image_url.startswith('/'):
+                    # For relative URLs from belc.jp, prefix with base URL
+                    if 'belc.jp' in matched_recipe.get('url', ''):
+                        image_url = f"https://www.belc.jp{image_url}"
+                print(f"Recipe Image: {image_url}")
+                
+            if 'video_data' in matched_recipe and matched_recipe['video_data']:
+                video_data = matched_recipe['video_data']
+                print(f"Recipe Video: {video_data.get('poster_url', '')}")
+                for source in video_data.get('sources', []):
+                    print(f"Video URL: {source.get('url', '')}")
+            
+            search_results.append(matched_recipe)
+    
+    # Return the best match if available
+    if search_results:
+        return search_results[0]
+    
+    # If no good matches found, try a more lenient search
+    if threshold > 0.5:
+        print(f"No match found with threshold {threshold}, trying more lenient search")
+        return check_recipe_exists(prompt, threshold - 0.1)
+    
+    print("No match found after all attempts")
+    return None
+
+def format_recipe_output(recipe_data):
+    """
+    Format recipe data into the RecipeOutput model.
+    
+    Args:
+        recipe_data: The recipe data from the database
+        
+    Returns:
+        A formatted RecipeOutput object
+    """
+    # Extract ingredients
+    ingredients = recipe_data.get('ingredients', [])
+    if isinstance(ingredients, list):
+        # Handle different ingredient formats
+        if ingredients and isinstance(ingredients[0], dict) and 'name' in ingredients[0]:
+            ingredients_text = '\n'.join([f"- {ing.get('name', '')} ({ing.get('quantity', '')})" 
+                                         for ing in ingredients])
+        else:
+            ingredients_text = '\n'.join([f"- {ing}" for ing in ingredients])
+    else:
+        ingredients_text = str(ingredients)
+    
+    # Extract instructions
+    instructions = recipe_data.get('steps', [])
+    if isinstance(instructions, list):
+        instructions_list = instructions
+    else:
+        instructions_list = [str(instructions)]
+    
+    # Handle image URL (handle both absolute and relative URLs)
+    image_url = recipe_data.get('image_url')
+    if image_url and image_url.startswith('/'):
+        # For relative URLs from belc.jp, prefix with base URL
+        if 'belc.jp' in recipe_data.get('url', ''):
+            image_url = f"https://www.belc.jp{image_url}"
+    
+    # Create video data if present
+    video_data_dict = recipe_data.get('video_data')
+    video_data = None
+    if video_data_dict:
+        sources = []
+        for source in video_data_dict.get('sources', []):
+            sources.append(VideoSource(
+                url=source.get('url', ''),
+                type=source.get('type', '')
+            ))
+        
+        if sources and video_data_dict.get('poster_url'):
+            video_data = VideoData(
+                poster_url=video_data_dict.get('poster_url', ''),
+                sources=sources
+            )
+    
+    # Create the formatted output
+    return RecipeOutput(
+        recipe_title=recipe_data.get('title', ''),
+        cuisine_type=recipe_data.get('cuisine_type', ''),
+        prep_time=recipe_data.get('prep_time', ''),
+        cook_time=recipe_data.get('cook_time', ''),
+        total_time=recipe_data.get('total_time', ''),
+        ingredients=ingredients_text,
+        instructions=instructions_list,
+        nutritional_info=recipe_data.get('nutritional_info', ''),
+        difficulty_level=recipe_data.get('difficulty_level', ''),
+        serving_size=recipe_data.get('serving_size', ''),
+        storage_instructions=recipe_data.get('storage_instructions', ''),
+        extra_features=recipe_data.get('extra_features', {}),
+        image_url=image_url,
+        video_data=video_data
+    )
+
+def display_search_results(search_query, top_k=3, threshold=0.7):
+    """
+    Display search results with images and videos.
+    
+    Args:
+        search_query: The user's search query
+        top_k: Number of top results to show
+        threshold: Similarity threshold
+        
+    Returns:
+        List of matching recipes
+    """
+    recipe_name = extract_recipe_name(search_query)
+    query_embedding = model.encode([recipe_name])
+    
+    # Search by title
+    distances, indices = title_index.search(query_embedding.astype('float32'), k=top_k)
+    
+    results = []
+    print(f"Search results for '{recipe_name}':")
+    
+    for i, distance in enumerate(distances[0]):
+        if distance < threshold:
+            matched_recipe = recipes[indices[0][i]]
+            formatted_recipe = format_recipe_output(matched_recipe)
+            
+            print(f"\n{i+1}. {formatted_recipe.recipe_title} (Relevance: {1-distance:.2f})")
+            
+            # Display image
+            if formatted_recipe.image_url:
+                print(f"Image: {formatted_recipe.image_url}")
+            
+            # Display video preview
+            if formatted_recipe.video_data:
+                print(f"Video Preview: {formatted_recipe.video_data.poster_url}")
+                if formatted_recipe.video_data.sources:
+                    print(f"Watch: {formatted_recipe.video_data.sources[0].url}")
+            
+            # Show brief details
+            print(f"Cuisine: {formatted_recipe.cuisine_type or 'Not specified'}")
+            print(f"Prep time: {formatted_recipe.prep_time or 'Not specified'}")
+            print(f"Cook time: {formatted_recipe.cook_time or 'Not specified'}")
+            
+            results.append(formatted_recipe)
+    
+    if not results:
+        print("No matching recipes found.")
+    
+    return results

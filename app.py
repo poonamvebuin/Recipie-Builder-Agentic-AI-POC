@@ -2,7 +2,7 @@ import streamlit as st
 from typing import Iterator
 from agno.agent import RunResponse
 
-from Agent.recipe import get_agent
+from Agent.recipe import get_agent, check_recipe_exists, format_recipe_output
 from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
 from Agent.supervisor import get_supervisor_agent
@@ -49,13 +49,49 @@ user_input = st.chat_input("Ask for a recipe suggestion...")
 
 if user_input:
     st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
-    prompt = f"{user_input} generate response in {language}"
+    
+    # Check if user is indicating no preferences
+    no_preference_indicators = [
+        "no preferences", "not having specific preferences", "any recipe is fine", 
+        "no specific", "don't have preferences", "no particular preferences", 
+        "just suggest", "whatever you suggest", "anything is fine"
+    ]
+    
+    has_explicit_no_preference = any(indicator in user_input.lower() for indicator in no_preference_indicators)
+    
+    # Count previous messages to determine if we've already had a clarification exchange
+    user_message_count = sum(1 for msg in st.session_state.supervisor_history if msg["role"] == "user")
+    
+    # Check if the request is specifically for Japanese recipes
+    is_japanese_request = "japanese" in user_input.lower() or "japan" in user_input.lower() or "日本" in user_input
+    
+    # Construct the prompt
+    prompt = f"{user_input}"
+    
+    if is_japanese_request:
+        prompt += " IMPORTANT: For Japanese recipes, ALWAYS include both the Japanese name in Japanese characters AND English translation in the format: 寿司 (Sushi). Never suggest Japanese recipes without Japanese characters."
+    
+    if has_explicit_no_preference:
+        prompt += " USER HAS EXPLICITLY STATED NO PREFERENCES, PROVIDE RECIPE SUGGESTIONS IMMEDIATELY."
+    elif user_message_count > 1:
+        prompt += " THIS IS A FOLLOW-UP MESSAGE WITH USER PREFERENCES, PROVIDE RECIPE SUGGESTIONS NOW."
 
-    # response = st.session_state.supervisor_agent.run(
-    #     messages=[{"role": "user", "content": prompt}],
-    #     stream=False
-    # )
+    prompt += f" IMPORTANT: Generate response in {language}"
     msg = [{"role": "user", "content": prompt}]
+    
+    # Include conversation history for context if this isn't the first message
+    if user_message_count > 1 and len(st.session_state.supervisor_history) >= 2:
+        context_messages = []
+        # Add the last 2 exchanges for context
+        for i in range(min(4, len(st.session_state.supervisor_history))):
+            if len(st.session_state.supervisor_history) - i - 1 >= 0:
+                prev_msg = st.session_state.supervisor_history[len(st.session_state.supervisor_history) - i - 1]
+                context_messages.insert(0, {"role": prev_msg["role"], "content": prev_msg["content"]})
+        
+        # Add current message
+        context_messages.append({"role": "user", "content": prompt})
+        msg = context_messages
+    
     response = st.session_state.supervisor_agent.run(
         messages=msg,
         stream=False
@@ -65,20 +101,55 @@ if user_input:
 
     # Extract suggestions for button display
     dish_suggestions = []
-    for line in response.content.splitlines():
-        line = line.strip()
-        if "." in line or "。" in line or "?" in line or "？" in line:
-            if "." in line:
-                parts = line.split(".", 1)
-            elif "。" in line:
-                parts = line.split("。", 1)
-            else:
-                parts = line.split("?", 1) 
+    if "RECIPE SUGGESTIONS:" in response.content:
+        # Split the content at the marker and take everything after it
+        suggestion_section = response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
+        
+        # Process each line in the suggestion section
+        for line in suggestion_section.splitlines():
+            line = line.strip()
+            if line:
+                # Remove common punctuation that might appear
+                if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
+                    line = line[:-1].strip()
+                
+                # Add to suggestions if non-empty
+                if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
+                    dish_suggestions.append(line)
+    
+    # For Japanese requests, verify that suggestions have Japanese characters
+    if is_japanese_request and dish_suggestions:
+        has_japanese_chars = False
+        for suggestion in dish_suggestions:
+            # Check if any suggestion contains Japanese characters
+            if any(ord(char) > 127 for char in suggestion):
+                has_japanese_chars = True
+                break
+        
+        # If no Japanese characters found, force regeneration with Japanese
+        if not has_japanese_chars:
+            force_japanese_prompt = (
+                f"Based on the user request for Japanese recipes, please provide ONLY recipe suggestions "
+                f"with BOTH Japanese characters AND English translations. Format each suggestion as: "
+                f"[Japanese name in Japanese characters] ([English translation]). "
+                f"Examples: 寿司 (Sushi), 天ぷら (Tempura), ラーメン (Ramen). "
+                f"Start with 'RECIPE SUGGESTIONS:' and list 5 suitable recipes."
+            )
+            
+            force_msg = [{"role": "user", "content": force_japanese_prompt}]
+            force_response = st.session_state.supervisor_agent.run(
+                messages=force_msg,
+                stream=False
+            )
+            
+            # Replace the previous response
+            st.session_state.supervisor_history[-1]["content"] = force_response.content
+            
+            # Extract new suggestions
+            if "RECIPE SUGGESTIONS:" in force_response.content:
+                suggestion_section = force_response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
+                dish_suggestions = [line.strip() for line in suggestion_section.splitlines() if line.strip()]
 
-            suggestion = parts[1].strip() if len(parts) > 1 else parts[0].strip()
-
-            if suggestion and not (suggestion.endswith("?") or suggestion.endswith("？") or suggestion.endswith("）") or suggestion.endswith(")") or suggestion.endswith(".") or suggestion.endswith("。") or suggestion.endswith(":") or suggestion.endswith("！") or suggestion.endswith("：")):
-                dish_suggestions.append(suggestion)
     if dish_suggestions:
         st.session_state.dish_suggestions = dish_suggestions
         st.session_state.final_dish_choice = None
@@ -110,17 +181,36 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
 
         # Construct prompt for recipe agent using context
         prompt = (
+            f"Provide response in the language: {language}."
             f"preferece:\n{conversation_history}\n\n"
             f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'. "
-            f"Ensure it matches the language: {language}."
         )
 
         print('----------prompt', prompt)
-
-        run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
-        recipe = run_response.content
+        existing_recipe = check_recipe_exists(prompt)
+        if existing_recipe:
+            recipe = format_recipe_output(existing_recipe)
+        else:
+            run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
+            recipe = run_response.content
 
         st.title("🍽️ Deliciously Recipe 🍽️")
+        
+        # # Display recipe image or video if available
+        # if recipe.video_data and recipe.video_data.get('poster_url'):
+        #     # If video data is available, use the poster_url as the image
+        #     st.image(recipe.video_data.get('poster_url'), caption=recipe.recipe_title)
+        #
+        #     # Check if there's a video source with type "video/mp4"
+        #     video_sources = recipe.video_data.get('sources', [])
+        #     mp4_video = next((source for source in video_sources if source.get('type') == 'video/mp4'), None)
+        #
+        #     if mp4_video and mp4_video.get('url'):
+        #         st.video(mp4_video.get('url'))
+        # elif recipe.image_url:
+        #     # If only image is available, display it
+        #     st.image(recipe.image_url, caption=recipe.recipe_title)
+        #
         info = {
             "Recipe Title": recipe.recipe_title,
             "Cuisine Type": recipe.cuisine_type,
