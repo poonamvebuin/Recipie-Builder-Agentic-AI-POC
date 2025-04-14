@@ -40,7 +40,7 @@ def get_supervisor_agent():
         - ALWAYS ask for preferences first unless user explicitly states no preferences
         - ALWAYS include Japanese characters for Japanese dishes
         - Format each suggestion on its own line after "RECIPE SUGGESTIONS:"
-        - Never provide recipe details until user selects a specific recipe
+        - Never provide recipe details just provide recipe suggestions.
         """,
     )
     return agent

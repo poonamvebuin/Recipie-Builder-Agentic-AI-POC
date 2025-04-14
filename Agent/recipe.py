@@ -36,7 +36,7 @@ class RecipeOutput(BaseModel):
     serving_size: Optional[str] = None
     storage_instructions: Optional[str] = None
     extra_features: Optional[Dict[str, str]] = None
-    # image_url: Optional[str] = None
+    image_url: Optional[str] = None
     # video_data: Optional[VideoData] = None
     # model_config = ConfigDict(
     #     extra='forbid',
