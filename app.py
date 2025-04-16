@@ -92,64 +92,79 @@ if user_input:
         context_messages.append({"role": "user", "content": prompt})
         msg = context_messages
     
-    response = st.session_state.supervisor_agent.run(
-        messages=msg,
-        stream=False
-    )
+    # Check if recipe exists in Belc data
+    existing_recipes = check_recipe_exists(user_input, language)
+    # print('------------', type(existing_recipes))
+    # print('------------', existing_recipes)
+    if existing_recipes:
+        # If multiple matches found, display them
+        dish_suggestions = []
+        for recipe in existing_recipes:
+            dish_suggestions.append(recipe['title'])
+        # st.session_state.dish_suggestions = dish_suggestions
+        # st.session_state.final_dish_choice = None
+        # st.session_state.ready_for_recipe = False
+    else:
+        # If no recipe exists in Belc data, use supervisor agent to get suggestions
+        response = st.session_state.supervisor_agent.run(
+            messages=msg,
+            stream=False
+            )
+        response = response.content
+        st.session_state.supervisor_history.append({"role": "assistant", "content": response})
 
-    st.session_state.supervisor_history.append({"role": "assistant", "content": response.content})
+        # Extract suggestions for button display
+        dish_suggestions = []
+        if "RECIPE SUGGESTIONS:" in response:
+            # Split the content at the marker and take everything after it
+            suggestion_section = response.split("RECIPE SUGGESTIONS:", 1)[1].strip()
+            
+            # Process each line in the suggestion section
+            for line in suggestion_section.splitlines():
+                line = line.strip()
+                if line:
+                    # Remove common punctuation that might appear
+                    if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
+                        line = line[:-1].strip()
+                    
+                    # Add to suggestions if non-empty
+                    if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
+                        dish_suggestions.append(line)
 
-    # Extract suggestions for button display
-    dish_suggestions = []
-    if "RECIPE SUGGESTIONS:" in response.content:
-        # Split the content at the marker and take everything after it
-        suggestion_section = response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
-        
-        # Process each line in the suggestion section
-        for line in suggestion_section.splitlines():
-            line = line.strip()
-            if line:
-                # Remove common punctuation that might appear
-                if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
-                    line = line[:-1].strip()
+        # For Japanese requests, verify that suggestions have Japanese characters
+        if is_japanese_request and dish_suggestions:
+            print('--------dish_suggestions', dish_suggestions)
+            has_japanese_chars = False
+            for suggestion in dish_suggestions:
+                # Check if any suggestion contains Japanese characters
+                if any(ord(char) > 127 for char in suggestion):
+                    has_japanese_chars = True
+                    break
+            
+            # If no Japanese characters found, force regeneration with Japanese
+            if not has_japanese_chars:
+                force_japanese_prompt = (
+                    f"Based on the user request for Japanese recipes, please provide ONLY recipe suggestions "
+                    f"with BOTH Japanese characters AND English translations. Format each suggestion as: "
+                    f"[Japanese name in Japanese characters] ([English translation]). "
+                    f"Examples: 寿司 (Sushi), 天ぷら (Tempura), ラーメン (Ramen). "
+                    f"Start with 'RECIPE SUGGESTIONS:' and list 5 suitable recipes."
+                )
                 
-                # Add to suggestions if non-empty
-                if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
-                    dish_suggestions.append(line)
-    
-    # For Japanese requests, verify that suggestions have Japanese characters
-    if is_japanese_request and dish_suggestions:
-        has_japanese_chars = False
-        for suggestion in dish_suggestions:
-            # Check if any suggestion contains Japanese characters
-            if any(ord(char) > 127 for char in suggestion):
-                has_japanese_chars = True
-                break
-        
-        # If no Japanese characters found, force regeneration with Japanese
-        if not has_japanese_chars:
-            force_japanese_prompt = (
-                f"Based on the user request for Japanese recipes, please provide ONLY recipe suggestions "
-                f"with BOTH Japanese characters AND English translations. Format each suggestion as: "
-                f"[Japanese name in Japanese characters] ([English translation]). "
-                f"Examples: 寿司 (Sushi), 天ぷら (Tempura), ラーメン (Ramen). "
-                f"Start with 'RECIPE SUGGESTIONS:' and list 5 suitable recipes."
-            )
-            
-            force_msg = [{"role": "user", "content": force_japanese_prompt}]
-            force_response = st.session_state.supervisor_agent.run(
-                messages=force_msg,
-                stream=False
-            )
-            
-            # Replace the previous response
-            st.session_state.supervisor_history[-1]["content"] = force_response.content
-            
-            # Extract new suggestions
-            if "RECIPE SUGGESTIONS:" in force_response.content:
-                suggestion_section = force_response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
-                dish_suggestions = [line.strip() for line in suggestion_section.splitlines() if line.strip()]
-
+                force_msg = [{"role": "user", "content": force_japanese_prompt}]
+                force_response = st.session_state.supervisor_agent.run(
+                    messages=force_msg,
+                    stream=False
+                )
+                
+                # Replace the previous response
+                st.session_state.supervisor_history[-1]["content"] = force_response.content
+                
+                # Extract new suggestions
+                if "RECIPE SUGGESTIONS:" in force_response.content:
+                    suggestion_section = force_response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
+                    dish_suggestions = [line.strip() for line in suggestion_section.splitlines() if line.strip()]
+    print('----dishhhhhhhhhhhhhh----', dish_suggestions)
     if dish_suggestions:
         st.session_state.dish_suggestions = dish_suggestions
         st.session_state.final_dish_choice = None
@@ -187,7 +202,7 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
         )
 
         print('----------prompt', prompt)
-        existing_recipe = check_recipe_exists(prompt)
+        existing_recipe = check_recipe_exists(prompt, language)
         if existing_recipe:
             recipe = format_recipe_output(existing_recipe)
         else:

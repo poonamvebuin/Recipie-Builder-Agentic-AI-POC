@@ -10,6 +10,7 @@ import json
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
+from deep_translator import GoogleTranslator
 
 load_dotenv()
 
@@ -165,6 +166,9 @@ def get_agent():
             - Use bullet points or numbered lists for clarity.
             - Ensure any special dietary notes or substitutions are included next to the relevant ingredients.
             
+            Image:
+            - Generate image of dish   
+            
         """),
 
         markdown=True,
@@ -242,7 +246,16 @@ def extract_recipe_name(prompt):
     # If no pattern matches, return the whole prompt
     return prompt.strip()
 
-def check_recipe_exists(prompt, threshold=0.7):
+def translate_to_japanese(text):
+    try:
+        translated_text = GoogleTranslator(source='auto', target='ja').translate(text)
+        return translated_text
+    except Exception as e:
+        print("Translation failed:", e)
+        return None
+    
+
+def check_recipe_exists(prompt, language, threshold=0.6):
     """
     Check if a recipe exists in the database based on the recipe name.
     
@@ -254,14 +267,21 @@ def check_recipe_exists(prompt, threshold=0.7):
         The matching recipe or None if no match found
     """
     # Extract the recipe name from the prompt
-    recipe_name = extract_recipe_name(prompt)
-    print(f"Extracted recipe name: {recipe_name}")
-    
+    extract_recipe = extract_recipe_name(prompt)
+    print(f"Extracted recipe name: {extract_recipe}")
+    if language != 'ja':
+        recipe_name = translate_to_japanese(extract_recipe)
+        print('------------recipe_name', recipe_name)
+    else:
+        recipe_name = extract_recipe
+        print('------------recipe_name', recipe_name)
+
     # Encode the recipe name
     query_embedding = model.encode([recipe_name])
     
     # Search by title
-    distances, indices = title_index.search(query_embedding.astype('float32'), k=3)
+    distances, indices = title_index.search(query_embedding.astype('float32'), k=10)
+    print('1212121210', distances, threshold)
     
     # Store search results
     search_results = []
@@ -292,7 +312,7 @@ def check_recipe_exists(prompt, threshold=0.7):
     
     # Return the best match if available
     if search_results:
-        return search_results[0]
+        return search_results
     
     # If no good matches found, try a more lenient search
     if threshold > 0.5:
@@ -313,6 +333,8 @@ def format_recipe_output(recipe_data):
         A formatted RecipeOutput object
     """
     # Extract ingredients
+    # print('----------------recipe_data', recipe_data)
+    recipe_data = recipe_data[0]
     ingredients = recipe_data.get('ingredients', [])
     if isinstance(ingredients, list):
         # Handle different ingredient formats
@@ -373,52 +395,52 @@ def format_recipe_output(recipe_data):
         video_data=video_data
     )
 
-def display_search_results(search_query, top_k=3, threshold=0.7):
-    """
-    Display search results with images and videos.
+# def display_search_results(search_query, top_k=3, threshold=0.7):
+#     """
+#     Display search results with images and videos.
     
-    Args:
-        search_query: The user's search query
-        top_k: Number of top results to show
-        threshold: Similarity threshold
+#     Args:
+#         search_query: The user's search query
+#         top_k: Number of top results to show
+#         threshold: Similarity threshold
         
-    Returns:
-        List of matching recipes
-    """
-    recipe_name = extract_recipe_name(search_query)
-    query_embedding = model.encode([recipe_name])
+#     Returns:
+#         List of matching recipes
+#     """
+#     recipe_name = extract_recipe_name(search_query)
+#     query_embedding = model.encode([recipe_name])
     
-    # Search by title
-    distances, indices = title_index.search(query_embedding.astype('float32'), k=top_k)
+#     # Search by title
+#     distances, indices = title_index.search(query_embedding.astype('float32'), k=top_k)
     
-    results = []
-    print(f"Search results for '{recipe_name}':")
+#     results = []
+#     print(f"Search results for '{recipe_name}':")
     
-    for i, distance in enumerate(distances[0]):
-        if distance < threshold:
-            matched_recipe = recipes[indices[0][i]]
-            formatted_recipe = format_recipe_output(matched_recipe)
+#     for i, distance in enumerate(distances[0]):
+#         if distance < threshold:
+#             matched_recipe = recipes[indices[0][i]]
+#             formatted_recipe = format_recipe_output(matched_recipe)
             
-            print(f"\n{i+1}. {formatted_recipe.recipe_title} (Relevance: {1-distance:.2f})")
+#             print(f"\n{i+1}. {formatted_recipe.recipe_title} (Relevance: {1-distance:.2f})")
             
-            # Display image
-            if formatted_recipe.image_url:
-                print(f"Image: {formatted_recipe.image_url}")
+#             # Display image
+#             if formatted_recipe.image_url:
+#                 print(f"Image: {formatted_recipe.image_url}")
             
-            # Display video preview
-            if formatted_recipe.video_data:
-                print(f"Video Preview: {formatted_recipe.video_data.poster_url}")
-                if formatted_recipe.video_data.sources:
-                    print(f"Watch: {formatted_recipe.video_data.sources[0].url}")
+#             # Display video preview
+#             if formatted_recipe.video_data:
+#                 print(f"Video Preview: {formatted_recipe.video_data.poster_url}")
+#                 if formatted_recipe.video_data.sources:
+#                     print(f"Watch: {formatted_recipe.video_data.sources[0].url}")
             
-            # Show brief details
-            print(f"Cuisine: {formatted_recipe.cuisine_type or 'Not specified'}")
-            print(f"Prep time: {formatted_recipe.prep_time or 'Not specified'}")
-            print(f"Cook time: {formatted_recipe.cook_time or 'Not specified'}")
+#             # Show brief details
+#             print(f"Cuisine: {formatted_recipe.cuisine_type or 'Not specified'}")
+#             print(f"Prep time: {formatted_recipe.prep_time or 'Not specified'}")
+#             print(f"Cook time: {formatted_recipe.cook_time or 'Not specified'}")
             
-            results.append(formatted_recipe)
+#             results.append(formatted_recipe)
     
-    if not results:
-        print("No matching recipes found.")
+#     if not results:
+#         print("No matching recipes found.")
     
-    return results
+#     return results
