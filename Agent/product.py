@@ -1,7 +1,10 @@
+import time
 import re
-from fuzzywuzzy import fuzz, process
+from rapidfuzz import fuzz, process
+# from fuzzywuzzy import fuzz, process
 from deep_translator import GoogleTranslator
 from Database.database import search_products
+import streamlit as st
 
 def clean_ingredient(ingredient):
     cleaned = re.sub(r'[-–—•\d/.]+[a-zA-Z]*|🌶|🌾|[^\w\s]', '', ingredient)
@@ -15,13 +18,19 @@ def clean_ingredient(ingredient):
 def find_similar_products(cleaned_ingredients, products_db, threshold=85):
     results = set()
     product_names = [product[0].lower() for product in products_db]
-
+    # start_time = time.time()
     for ingredient in cleaned_ingredients:
         best_match = process.extractOne(ingredient, product_names, scorer=fuzz.token_set_ratio)
         if best_match and best_match[1] >= threshold:
             for product in products_db:
                 if best_match[0] == product[0].lower():
                     results.add(tuple(product))
+    # end_time = time.time()
+    # elapsed_time = end_time - start_time
+
+    # print(f"Time taken for fuzzy matching: {elapsed_time} seconds")
+    # st.info(f"Time taken for fuzzy matching: {elapsed_time} seconds")
+    
     return list(results)
 
 def get_available_ingredients(recipe_ingredients, language="English"):

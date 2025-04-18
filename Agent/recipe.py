@@ -255,13 +255,14 @@ def translate_to_japanese(text):
         return None
     
 
-def check_recipe_exists(prompt, language, threshold=0.6):
+def check_recipe_exists(prompt, language, threshold=0.6, max_attempts=5):
     """
     Check if a recipe exists in the database based on the recipe name.
     
     Args:
         prompt: The user's prompt
         threshold: Similarity threshold (lower is more strict)
+        max_attempts: The maximum number of attempts before returning None
         
     Returns:
         The matching recipe or None if no match found
@@ -269,13 +270,14 @@ def check_recipe_exists(prompt, language, threshold=0.6):
     # Extract the recipe name from the prompt
     extract_recipe = extract_recipe_name(prompt)
     print(f"Extracted recipe name: {extract_recipe}")
-    if language != 'ja':
-        recipe_name = translate_to_japanese(extract_recipe)
-        print('------------recipe_name', recipe_name)
-    else:
-        recipe_name = extract_recipe
-        print('------------recipe_name', recipe_name)
-
+    
+    # if language != 'ja':
+    #     recipe_name = translate_to_japanese(extract_recipe)
+    #     print('------------recipe_name', recipe_name)
+    # else:
+    #     recipe_name = extract_recipe
+    #     print('------------recipe_name', recipe_name)
+    recipe_name = extract_recipe
     # Encode the recipe name
     query_embedding = model.encode([recipe_name])
     
@@ -294,7 +296,6 @@ def check_recipe_exists(prompt, language, threshold=0.6):
             
             # Display image and video if available
             if 'image_url' in matched_recipe and matched_recipe['image_url']:
-                # Handle both absolute and relative URLs
                 image_url = matched_recipe['image_url']
                 if image_url.startswith('/'):
                     # For relative URLs from belc.jp, prefix with base URL
@@ -314,10 +315,10 @@ def check_recipe_exists(prompt, language, threshold=0.6):
     if search_results:
         return search_results
     
-    # If no good matches found, try a more lenient search
-    if threshold > 0.5:
+    # If no good matches found, check the number of attempts
+    if max_attempts > 0:
         print(f"No match found with threshold {threshold}, trying more lenient search")
-        return check_recipe_exists(prompt, threshold - 0.1)
+        return check_recipe_exists(prompt, language, threshold - 0.1, max_attempts - 1)
     
     print("No match found after all attempts")
     return None

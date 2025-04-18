@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from typing import Iterator
 from agno.agent import RunResponse
@@ -16,7 +17,6 @@ language_options = ["English","Japanese"]
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
 
 # App Header
-# st.title("🍳 Recipe Creation Assistant 🍳")
 st.header("🧑‍🍳 Chat with Recipe Assistant")
 
 # Session State Initialization
@@ -39,24 +39,32 @@ if "last_added" not in st.session_state:
 if "dish_suggestions" not in st.session_state:
     st.session_state.dish_suggestions = []
 
+# Function to stream assistant response using a generator
+def stream_response_chunks(response_iterator: Iterator[RunResponse]):
+    for chunk in response_iterator:
+        yield chunk.content
+        time.sleep(0.01)
+
 # Show full chat history always
-# for msg in st.session_state.supervisor_history:
-#     with st.chat_message(msg["role"]):
-#         st.markdown(msg["content"])
+for msg in st.session_state.supervisor_history:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
 # Chat Input
-user_input = st.chat_input("Ask for a recipe suggestion...")
-
-if user_input:
+if user_input := st.chat_input("Ask for a recipe suggestion..."):
+    # Store user's message
     st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
-    
+
+    # Display user input
+    with st.chat_message("user"):
+        st.markdown(user_input)
+
     # Check if user is indicating no preferences
     no_preference_indicators = [
         "no preferences", "not having specific preferences", "any recipe is fine", 
         "no specific", "don't have preferences", "no particular preferences", 
         "just suggest", "whatever you suggest", "anything is fine"
     ]
-    
     has_explicit_no_preference = any(indicator in user_input.lower() for indicator in no_preference_indicators)
     
     # Count previous messages to determine if we've already had a clarification exchange
@@ -67,7 +75,6 @@ if user_input:
     
     # Construct the prompt
     prompt = f"{user_input}"
-    
     if is_japanese_request:
         prompt += " IMPORTANT: For Japanese recipes, ALWAYS include both the Japanese name in Japanese characters AND English translation in the format: 寿司 (Sushi). Never suggest Japanese recipes without Japanese characters."
     
@@ -105,20 +112,18 @@ if user_input:
         # st.session_state.final_dish_choice = None
         # st.session_state.ready_for_recipe = False
     else:
-        # If no recipe exists in Belc data, use supervisor agent to get suggestions
-        response = st.session_state.supervisor_agent.run(
-            messages=msg,
-            stream=False
-            )
-        response = response.content
-        st.session_state.supervisor_history.append({"role": "assistant", "content": response})
+        response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
+        with st.chat_message("assistant"):
+            full_response = st.write_stream(stream_response_chunks(response_iterator))
+
+        # Store assistant response
+        st.session_state.supervisor_history.append({"role": "assistant", "content": full_response})
 
         # Extract suggestions for button display
         dish_suggestions = []
-        if "RECIPE SUGGESTIONS:" in response:
+        if "RECIPE SUGGESTIONS:" in full_response:
             # Split the content at the marker and take everything after it
-            suggestion_section = response.split("RECIPE SUGGESTIONS:", 1)[1].strip()
-            
+            suggestion_section = full_response.split("RECIPE SUGGESTIONS:", 1)[1].strip()
             # Process each line in the suggestion section
             for line in suggestion_section.splitlines():
                 line = line.strip()
@@ -131,6 +136,7 @@ if user_input:
                     if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
                         dish_suggestions.append(line)
 
+    if dish_suggestions:
         # For Japanese requests, verify that suggestions have Japanese characters
         if is_japanese_request and dish_suggestions:
             print('--------dish_suggestions', dish_suggestions)
@@ -164,16 +170,9 @@ if user_input:
                 if "RECIPE SUGGESTIONS:" in force_response.content:
                     suggestion_section = force_response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
                     dish_suggestions = [line.strip() for line in suggestion_section.splitlines() if line.strip()]
-    print('----dishhhhhhhhhhhhhh----', dish_suggestions)
-    if dish_suggestions:
         st.session_state.dish_suggestions = dish_suggestions
         st.session_state.final_dish_choice = None
         st.session_state.ready_for_recipe = False
-
-# Show full chat history always
-for msg in st.session_state.supervisor_history:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
 
 # Show suggestion buttons
 if st.session_state.dish_suggestions:
@@ -187,27 +186,30 @@ if st.session_state.dish_suggestions:
 # Generate recipe
 recipe_generated = False
 if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
-    with st.spinner("Generating your recipe..."):
+    # Build context from conversation history
+    conversation_history = ""
+    for msg in st.session_state.supervisor_history:
+        conversation_history += f"{msg['content']}\n"
 
-        # Build context from conversation history
-        conversation_history = ""
-        for msg in st.session_state.supervisor_history:
-            conversation_history += f"{msg['content']}\n"
+    # Construct prompt for recipe agent using context
+    prompt = (
+        f"Provide response in the language: {language}.\n"
+        f"Preference:\n{conversation_history}\n\n"
+        f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'. "
+    )
 
-        # Construct prompt for recipe agent using context
-        prompt = (
-            f"Provide response in the language: {language}."
-            f"preferece:\n{conversation_history}\n\n"
-            f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'. "
-        )
+    existing_recipe = check_recipe_exists(prompt, language)
+    if existing_recipe:
+        recipe = format_recipe_output(existing_recipe)
+    else:
+        run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
+        recipe = run_response.content
+        # response_iterator: Iterator[RunResponse] = st.session_state.recipe_agent.run(messages=msg, stream=True)
+        # with st.chat_message("assistant"):
+        #     full_response = st.write_stream(response_iterator.content)
 
-        print('----------prompt', prompt)
-        existing_recipe = check_recipe_exists(prompt, language)
-        if existing_recipe:
-            recipe = format_recipe_output(existing_recipe)
-        else:
-            run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
-            recipe = run_response.content
+        # # Once streaming is complete, store the final recipe content
+        # st.session_state.recipe = full_response
 
         st.title("🍽️ Deliciously Recipe 🍽️")
         
@@ -271,13 +273,22 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
 if recipe_generated:
     st.title("🛒 Product Finder for Ingredients")
 
+    start_time = time.time()
+    search_done = False
+    elapsed_time = 0
+
     if st.button("Find Available Ingredients"):
+        start_time_spinner = time.time()
+        search_done = True
         with st.spinner("Finding matching products... ⏳"):
+            end_time_spinner = time.time()
             st.session_state.available_ingredients = get_available_ingredients(
                 st.session_state.recipe.ingredients, language
             )
 
-    if st.session_state.available_ingredients:
+    if search_done and not st.session_state.available_ingredients:
+        st.warning("⚠️ No matching product found.")
+    elif search_done:
         st.subheader("Matching Products:")
         product_list = st.session_state.available_ingredients
 
@@ -300,6 +311,11 @@ if recipe_generated:
     if st.session_state.last_added:
         st.success(f"✅ {st.session_state.last_added} added to cart!")
         st.session_state.last_added = None
+
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    if search_done:
+        st.info(f"Time taken: {elapsed_time:.4f} seconds")
 
     if st.session_state.cart_items:
         st.title("🧺 Your Cart:")
