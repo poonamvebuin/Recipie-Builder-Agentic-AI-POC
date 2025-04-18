@@ -313,7 +313,7 @@ if recipe_generated:
             )
 
             if st.button(f"Add to Cart", key=f"add_{i}"):
-                st.write('🛒 Button clicked for:', product["Product_name"])
+                # st.write('🛒 Button clicked for:', product["Product_name"])
                 add_item_to_cart(product, quantity)
                 st.session_state.last_added = product["Product_name"]
                 # st.experimental_rerun()  # Force refresh to show cart update immediately
