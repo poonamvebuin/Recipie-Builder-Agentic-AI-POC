@@ -28,7 +28,7 @@ def search_products():
         conn = connect_to_postgres()
         cursor = conn.cursor()
         query = """
-            SELECT product_name, description, price, stock_quantity, category,
+            SELECT product_name, tax, price, stock_quantity, category,
                    weight, unit, brand, expiry_date, is_vegan
             FROM ai.products;
         """

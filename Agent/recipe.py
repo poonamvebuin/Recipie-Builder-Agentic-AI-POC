@@ -255,71 +255,46 @@ def translate_to_japanese(text):
         return None
     
 
-def check_recipe_exists(prompt, language, threshold=0.6, max_attempts=5):
-    """
-    Check if a recipe exists in the database based on the recipe name.
-    
-    Args:
-        prompt: The user's prompt
-        threshold: Similarity threshold (lower is more strict)
-        max_attempts: The maximum number of attempts before returning None
-        
-    Returns:
-        The matching recipe or None if no match found
-    """
-    # Extract the recipe name from the prompt
+def check_recipe_exists(prompt, language, threshold=0.6, min_threshold=0.1):
     extract_recipe = extract_recipe_name(prompt)
     print(f"Extracted recipe name: {extract_recipe}")
-    
-    # if language != 'ja':
-    #     recipe_name = translate_to_japanese(extract_recipe)
-    #     print('------------recipe_name', recipe_name)
-    # else:
-    #     recipe_name = extract_recipe
-    #     print('------------recipe_name', recipe_name)
-    recipe_name = extract_recipe
-    # Encode the recipe name
+
+    recipe_name = (
+        translate_to_japanese(extract_recipe) if language != 'ja' else extract_recipe
+    )
+    print('------------recipe_name', recipe_name)
+
     query_embedding = model.encode([recipe_name])
-    
-    # Search by title
-    distances, indices = title_index.search(query_embedding.astype('float32'), k=10)
-    print('1212121210', distances, threshold)
-    
-    # Store search results
-    search_results = []
-    
-    # Check if any matches are good enough
-    for i, distance in enumerate(distances[0]):
-        if distance < threshold:
-            matched_recipe = recipes[indices[0][i]]
-            print(f"Found match: {matched_recipe.get('title')} with distance {distance}")
-            
-            # Display image and video if available
-            if 'image_url' in matched_recipe and matched_recipe['image_url']:
-                image_url = matched_recipe['image_url']
-                if image_url.startswith('/'):
-                    # For relative URLs from belc.jp, prefix with base URL
-                    if 'belc.jp' in matched_recipe.get('url', ''):
-                        image_url = f"https://www.belc.jp{image_url}"
-                print(f"Recipe Image: {image_url}")
-                
-            if 'video_data' in matched_recipe and matched_recipe['video_data']:
-                video_data = matched_recipe['video_data']
-                print(f"Recipe Video: {video_data.get('poster_url', '')}")
-                for source in video_data.get('sources', []):
-                    print(f"Video URL: {source.get('url', '')}")
-            
-            search_results.append(matched_recipe)
-    
-    # Return the best match if available
-    if search_results:
-        return search_results
-    
-    # If no good matches found, check the number of attempts
-    if max_attempts > 0:
-        print(f"No match found with threshold {threshold}, trying more lenient search")
-        return check_recipe_exists(prompt, language, threshold - 0.1, max_attempts - 1)
-    
+
+    while threshold >= min_threshold:
+        print(f"Searching with threshold: {threshold}")
+        distances, indices = title_index.search(query_embedding.astype('float32'), k=10)
+
+        search_results = []
+        for i, distance in enumerate(distances[0]):
+            if distance < threshold:
+                matched_recipe = recipes[indices[0][i]]
+                print(f"Found match: {matched_recipe.get('title')} with distance {distance}")
+
+                image_url = matched_recipe.get('image_url', '')
+                if image_url and image_url.startswith('/') and 'belc.jp' in matched_recipe.get('url', ''):
+                    image_url = f"https://www.belc.jp{image_url}"
+                if image_url:
+                    print(f"Recipe Image: {image_url}")
+
+                if 'video_data' in matched_recipe and matched_recipe['video_data']:
+                    video_data = matched_recipe['video_data']
+                    print(f"Recipe Video: {video_data.get('poster_url', '')}")
+                    for source in video_data.get('sources', []):
+                        print(f"Video URL: {source.get('url', '')}")
+
+                search_results.append(matched_recipe)
+
+        if search_results:
+            return search_results
+
+        threshold -= 0.1
+
     print("No match found after all attempts")
     return None
 
