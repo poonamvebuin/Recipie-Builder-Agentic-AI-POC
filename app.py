@@ -2,18 +2,21 @@ import time
 import streamlit as st
 from typing import Iterator
 from agno.agent import RunResponse
+import json
+import re
 
 from Agent.recipe import get_agent, check_recipe_exists, format_recipe_output
 from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
 from Agent.supervisor import get_supervisor_agent
+from Agent.team import multi_language_team
 
 # Streamlit Config
 st.set_page_config(page_title="Recipe Builder", layout="centered")
 
 # Sidebar - Language
 st.sidebar.header("🌐 Language Preferences")
-language_options = ["English","Japanese"]
+language_options = ["English", "Japanese"]
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
 
 # App Header
@@ -41,12 +44,89 @@ if "dish_suggestions" not in st.session_state:
     st.session_state.dish_suggestions = []
 if "search_done" not in st.session_state:
     st.session_state.search_done = False
+if "preferences" not in st.session_state:
+    st.session_state.preferences = {
+        "taste": None,
+        "cooking_time": None,
+        "ingredients": [],
+        "allergies": [],
+        "diet": None
+    }
+if "preferences_collected" not in st.session_state:
+    st.session_state.preferences_collected = False
+if "is_japanese_request" not in st.session_state:
+    st.session_state.is_japanese_request = False
+
 
 # Function to stream assistant response using a generator
 def stream_response_chunks(response_iterator: Iterator[RunResponse]):
-    for chunk in response_iterator:
-        yield chunk.content
-        time.sleep(0.01)
+    try:
+        # Handle iterable response
+        for chunk in response_iterator:
+            yield chunk.content
+            time.sleep(0.01)
+    except TypeError:
+        # Handle non-iterable response (single RunResponse object)
+        if hasattr(response_iterator, 'content'):
+            yield response_iterator.content
+
+
+def clean_recipe_name(recipe_text):
+    """Clean recipe text to remove URLs and other unwanted elements"""
+    # Remove URLs (http://, https://, www.)
+    recipe_text = re.sub(r'https?://\S+|www\.\S+', '', recipe_text)
+
+    # Remove any text after a hyphen or dash if it looks like a description
+    recipe_text = re.sub(r'\s+-\s+.*$', '', recipe_text)
+
+    # Remove any text in square brackets that's not part of Japanese formatting
+    if not any(ord(char) > 127 for char in recipe_text):  # If not Japanese
+        recipe_text = re.sub(r'\[.*?\]', '', recipe_text)
+
+    # Remove trailing punctuation and whitespace
+    recipe_text = recipe_text.strip('.,;:!?() \t\n\r')
+
+    return recipe_text.strip()
+
+
+# Preference Collection UI in Sidebar
+st.sidebar.header("🍽️ Your Preferences")
+
+# Only show preference inputs if not yet collected
+if not st.session_state.preferences_collected:
+    taste_options = ["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"]
+    st.session_state.preferences["taste"] = st.sidebar.selectbox("Taste Preference:", taste_options, index=5)
+
+    time_options = ["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"]
+    st.session_state.preferences["cooking_time"] = st.sidebar.selectbox("Cooking Time:", time_options, index=3)
+
+    ingredients_input = st.sidebar.text_area("Ingredients you want to use (comma separated):")
+    if ingredients_input:
+        st.session_state.preferences["ingredients"] = [i.strip() for i in ingredients_input.split(",")]
+
+    allergies_input = st.sidebar.text_area("Allergies or ingredients to avoid (comma separated):")
+    if allergies_input:
+        st.session_state.preferences["allergies"] = [a.strip() for a in allergies_input.split(",")]
+
+    diet_options = ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"]
+    st.session_state.preferences["diet"] = st.sidebar.selectbox("Dietary Preference:", diet_options, index=0)
+
+    if st.sidebar.button("Save Preferences"):
+        st.session_state.preferences_collected = True
+        st.sidebar.success("Preferences saved! Ask for recipe suggestions.")
+else:
+    # Display saved preferences
+    st.sidebar.write(f"**Taste:** {st.session_state.preferences['taste']}")
+    st.sidebar.write(f"**Cooking Time:** {st.session_state.preferences['cooking_time']}")
+    st.sidebar.write(
+        f"**Ingredients:** {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}")
+    st.sidebar.write(
+        f"**Allergies:** {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}")
+    st.sidebar.write(f"**Diet:** {st.session_state.preferences['diet']}")
+
+    if st.sidebar.button("Edit Preferences"):
+        st.session_state.preferences_collected = False
+        st.rerun()
 
 # Show full chat history always
 for msg in st.session_state.supervisor_history:
@@ -61,35 +141,84 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
     # Display user input
     with st.chat_message("user"):
         st.markdown(user_input)
-    # Check if user is indicating no preferences
-    no_preference_indicators = [
-        "no preferences", "not having specific preferences", "any recipe is fine", 
-        "no specific", "don't have preferences", "no particular preferences", 
-        "just suggest", "whatever you suggest", "anything is fine"
-    ]
-    
-    has_explicit_no_preference = any(indicator in user_input.lower() for indicator in no_preference_indicators)
-    
-    # Count previous messages to determine if we've already had a clarification exchange
-    user_message_count = sum(1 for msg in st.session_state.supervisor_history if msg["role"] == "user")
-    
-    # Check if the request is specifically for Japanese recipes
-    is_japanese_request = "japanese" in user_input.lower() or "japan" in user_input.lower() or "日本" in user_input
-    
-    # Construct the prompt
-    prompt = f"{user_input}"
-    
-    if is_japanese_request:
-        prompt += " IMPORTANT: For Japanese recipes, ALWAYS include both the Japanese name in Japanese characters AND English translation in the format: 寿司 (Sushi). Never suggest Japanese recipes without Japanese characters."
-    
-    if has_explicit_no_preference:
-        prompt += " USER HAS EXPLICITLY STATED NO PREFERENCES, PROVIDE RECIPE SUGGESTIONS IMMEDIATELY."
-    elif user_message_count > 1:
-        prompt += " THIS IS A FOLLOW-UP MESSAGE WITH USER PREFERENCES, PROVIDE RECIPE SUGGESTIONS NOW."
 
-    prompt += f" IMPORTANT: Generate response in {language}"
+    user_message_count = sum(1 for msg in st.session_state.supervisor_history if msg["role"] == "user")
+
+    # Check if the request is specifically for recipe suggestions based on preferences
+    is_suggestion_request = any(keyword in user_input.lower() for keyword in
+                                ["suggest", "recommendation", "what can i make", "recipe", "dish"])
+
+    # Check if the request is specifically for Japanese recipes
+    st.session_state.is_japanese_request = "japanese" in user_input.lower() or "japan" in user_input.lower() or "日本" in user_input
+
+    if is_suggestion_request and st.session_state.preferences_collected:
+        # Include user preferences in the prompt
+        preferences_text = f"""
+        User Preferences:
+        - Taste: {st.session_state.preferences['taste']}
+        - Cooking Time: {st.session_state.preferences['cooking_time']}
+        - Ingredients to include: {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}
+        - Allergies/Avoid: {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}
+        - Diet: {st.session_state.preferences['diet']}
+
+        Based on these preferences and the user's request: "{user_input}", suggest 5 suitable recipes.
+
+        IMPORTANT FORMATTING RULES:
+        1. Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
+        2. List each recipe on a new line
+        3. For Japanese recipes, use format: "寿司 (Sushi)" - Japanese name first, then English in parentheses
+        4. ONLY include the recipe names - NO URLs, NO image links, NO descriptions, NO additional text
+        5. DO NOT use JSON format
+
+        Example correct format:
+        Here are some recipe suggestions based on your preferences.
+
+        RECIPE SUGGESTIONS:
+        寿司 (Sushi)
+        天ぷら (Tempura)
+        ラーメン (Ramen)
+        うどん (Udon)
+        そば (Soba)
+        """
+        prompt = f"{preferences_text} IMPORTANT: Generate response in {language}"
+    else:
+        # Process request without specific preference information
+        no_preference_indicators = [
+            "no preferences", "not having specific preferences", "any recipe is fine",
+            "no specific", "don't have preferences", "no particular preferences",
+            "just suggest", "whatever you suggest", "anything is fine"
+        ]
+        has_explicit_no_preference = any(indicator in user_input.lower() for indicator in no_preference_indicators)
+
+        prompt = f"{user_input}"
+        if st.session_state.is_japanese_request:
+            prompt += " IMPORTANT: For Japanese recipes, ALWAYS include both the Japanese name in Japanese characters AND English translation in the format: 寿司 (Sushi). Never suggest Japanese recipes without Japanese characters."
+
+        if has_explicit_no_preference:
+            prompt += " USER HAS EXPLICITLY STATED NO PREFERENCES, PROVIDE RECIPE SUGGESTIONS IMMEDIATELY."
+        elif user_message_count > 1:
+            prompt += " THIS IS A FOLLOW-UP MESSAGE WITH USER PREFERENCES, PROVIDE RECIPE SUGGESTIONS NOW."
+
+        prompt += f"""
+        IMPORTANT FORMATTING RULES: 
+        - Generate response in {language}
+        - Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
+        - List each recipe on a new line
+        - For Japanese recipes, use format: "寿司 (Sushi)" - Japanese name first, then English in parentheses
+        - ONLY include the recipe names - NO URLs, NO image links, NO descriptions, NO additional text
+        - DO NOT use JSON format
+
+        Example correct format:
+        Here are some recipe suggestions based on your preferences.
+
+        RECIPE SUGGESTIONS:
+        寿司 (Sushi)
+        天ぷら (Tempura)
+        ラーメン (Ramen)
+        """
+
     msg = [{"role": "user", "content": prompt}]
-    
+
     # Include conversation history for context if this isn't the first message
     if user_message_count > 1 and len(st.session_state.supervisor_history) >= 2:
         context_messages = []
@@ -98,51 +227,75 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
             if len(st.session_state.supervisor_history) - i - 1 >= 0:
                 prev_msg = st.session_state.supervisor_history[len(st.session_state.supervisor_history) - i - 1]
                 context_messages.insert(0, {"role": prev_msg["role"], "content": prev_msg["content"]})
-        
+
         # Add current message
         context_messages.append({"role": "user", "content": prompt})
         msg = context_messages
-    
+
     # Check if recipe exists in Belc data
-    existing_recipes = check_recipe_exists(user_input, language)
+    # existing_recipes = check_recipe_exists(user_input, language)
     # print('------------', type(existing_recipes))
     # print('------------', existing_recipes)
-    if existing_recipes:
-        # If multiple matches found, display them
-        dish_suggestions = []
-        for recipe in existing_recipes:
-            dish_suggestions.append(recipe['title'])
-        # st.session_state.dish_suggestions = dish_suggestions
-        # st.session_state.final_dish_choice = None
-        # st.session_state.ready_for_recipe = False
-    else:
-        response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream_response_chunks(response_iterator))
+    # if existing_recipes:
+    #     # If multiple matches found, display them
+    #     dish_suggestions = []
+    #     for recipe in existing_recipes:
+    #         dish_suggestions.append(recipe['title'])
+    # st.session_state.dish_suggestions = dish_suggestions
+    # st.session_state.final_dish_choice = None
+    # st.session_state.ready_for_recipe = False
 
-        # Store assistant response
-        st.session_state.supervisor_history.append({"role": "assistant", "content": response})
+    response_iterator = multi_language_team.run(message=prompt, stream=True)
+    # response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
+    with st.chat_message("assistant"):
+        full_response = st.write_stream(stream_response_chunks(response_iterator))
 
-        # Extract suggestions for button display
-        dish_suggestions = []
-        if "RECIPE SUGGESTIONS:" in response:
-            # Split the content at the marker and take everything after it
-            suggestion_section = response.split("RECIPE SUGGESTIONS:", 1)[1].strip()
-            
-            # Process each line in the suggestion section
-            for line in suggestion_section.splitlines():
-                line = line.strip()
-                if line:
-                    # Remove common punctuation that might appear
-                    if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
-                        line = line[:-1].strip()
-                    
-                    # Add to suggestions if non-empty
-                    if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
-                        dish_suggestions.append(line)
+    # Store assistant response
+    st.session_state.supervisor_history.append({"role": "assistant", "content": full_response})
+
+    # Extract suggestions for button display
+    dish_suggestions = []
+
+    # First try to parse as JSON (in case the model returns JSON)
+    try:
+        json_response = json.loads(full_response)
+        if isinstance(json_response, dict) and "suggestions" in json_response and isinstance(
+                json_response["suggestions"], list):
+            dish_suggestions = json_response["suggestions"]
+
+            # Create a formatted response with RECIPE SUGGESTIONS: marker for display
+            formatted_response = json_response.get("message",
+                                                   "Here are some recipe suggestions:") + "\n\nRECIPE SUGGESTIONS:\n"
+            formatted_response += "\n".join(dish_suggestions)
+
+            # Update the stored response to use our formatted version with the marker
+            st.session_state.supervisor_history[-1]["content"] = formatted_response
+            full_response = formatted_response
+    except (json.JSONDecodeError, ValueError):
+        # Not valid JSON, continue with existing text extraction
+        pass
+
+    # If no suggestions were found via JSON, try the text marker approach
+    if not dish_suggestions and "RECIPE SUGGESTIONS:" in full_response:
+        # Split the content at the marker and take everything after it
+        suggestion_section = full_response.split("RECIPE SUGGESTIONS:", 1)[1].strip()
+        # Process each line in the suggestion section
+        for line in suggestion_section.splitlines():
+            line = line.strip()
+            if line:
+                # Remove common punctuation that might appear
+                if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
+                    line = line[:-1].strip()
+
+                # Clean the recipe name
+                line = clean_recipe_name(line)
+
+                # Add to suggestions if non-empty
+                if line and not line.lower().startswith(("if ", "when ", "please ", "let me")):
+                    dish_suggestions.append(line)
 
         # For Japanese requests, verify that suggestions have Japanese characters
-        if is_japanese_request and dish_suggestions:
+        if st.session_state.is_japanese_request and dish_suggestions:
             print('--------dish_suggestions', dish_suggestions)
             has_japanese_chars = False
             for suggestion in dish_suggestions:
@@ -150,7 +303,7 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
                 if any(ord(char) > 127 for char in suggestion):
                     has_japanese_chars = True
                     break
-            
+
             # If no Japanese characters found, force regeneration with Japanese
             if not has_japanese_chars:
                 force_japanese_prompt = (
@@ -158,18 +311,19 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
                     f"with BOTH Japanese characters AND English translations. Format each suggestion as: "
                     f"[Japanese name in Japanese characters] ([English translation]). "
                     f"Examples: 寿司 (Sushi), 天ぷら (Tempura), ラーメン (Ramen). "
+                    f"IMPORTANT: Do NOT include URLs, links, or descriptions - ONLY the recipe names. "
                     f"Start with 'RECIPE SUGGESTIONS:' and list 5 suitable recipes."
                 )
-                
+
                 force_msg = [{"role": "user", "content": force_japanese_prompt}]
                 force_response = st.session_state.supervisor_agent.run(
                     messages=force_msg,
                     stream=False
                 )
-                
+
                 # Replace the previous response
                 st.session_state.supervisor_history[-1]["content"] = force_response.content
-                
+
                 # Extract new suggestions
                 if "RECIPE SUGGESTIONS:" in force_response.content:
                     suggestion_section = force_response.content.split("RECIPE SUGGESTIONS:", 1)[1].strip()
@@ -197,91 +351,104 @@ if st.session_state.dish_suggestions:
 # Generate recipe
 recipe_generated = False
 if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
-    with st.spinner("Generating your recipe..."):
+    # Build context from conversation history and preferences
+    conversation_history = ""
+    for msg in st.session_state.supervisor_history:
+        conversation_history += f"{msg['content']}\n"
 
-        # Build context from conversation history
-        conversation_history = ""
-        for msg in st.session_state.supervisor_history:
-            conversation_history += f"{msg['content']}\n"
+    preferences_context = ""
+    if st.session_state.preferences_collected:
+        preferences_context = f"""
+        User Preferences:
+        - Taste: {st.session_state.preferences['taste']}
+        - Cooking Time: {st.session_state.preferences['cooking_time']}
+        - Ingredients to include: {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}
+        - Allergies/Avoid: {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}
+        - Diet: {st.session_state.preferences['diet']}
+        """
 
-        # Construct prompt for recipe agent using context
-        prompt = (
-            f"Provide response in the language: {language}."
-            f"preferece:\n{conversation_history}\n\n"
-            f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'. "
-        )
+    # Construct prompt for recipe agent using context
+    prompt = (
+        f"Provide response in the language: {language}.\n"
+        f"User Preferences:\n{preferences_context}\n"
+        f"Conversation Context:\n{conversation_history}\n\n"
+        f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'.\n"
+        f"IMPORTANT: Do not include placeholder URLs for images. If you don't have a valid image URL, leave the image_url field empty."
+    )
 
-        print('----------prompt', prompt)
-        existing_recipe = check_recipe_exists(prompt, language)
-        if existing_recipe:
-            recipe = format_recipe_output(existing_recipe)
-        else:
-            run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
-            recipe = run_response.content
-            # response_iterator: Iterator[RunResponse] = st.session_state.recipe_agent.run(messages=msg, stream=True)
-            # with st.chat_message("assistant"):
-            #     full_response = st.write_stream(response_iterator.content)
+    # existing_recipe = check_recipe_exists(prompt, language)
+    # if existing_recipe:
+    #     recipe = format_recipe_output(existing_recipe)
+    # else:
+    run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
+    recipe = run_response.content
+    # response_iterator: Iterator[RunResponse] = st.session_state.recipe_agent.run(messages=msg, stream=True)
+    # with st.chat_message("assistant"):
+    #     full_response = st.write_stream(response_iterator.content)
 
-            # # Once streaming is complete, store the final recipe content
-            # st.session_state.recipe = full_response
+    # # Once streaming is complete, store the final recipe content
+    # st.session_state.recipe = full_response
 
-        st.title("🍽️ Deliciously Recipe 🍽️")
-        
-        # Display recipe image or video if available
-        # if recipe.video_data and recipe.video_data.get('poster_url'):
-        #     # If video data is available, use the poster_url as the image
-        #     st.image(recipe.video_data.get('poster_url'), caption=recipe.recipe_title)
-        
-        #     # Check if there's a video source with type "video/mp4"
-        #     video_sources = recipe.video_data.get('sources', [])
-        #     mp4_video = next((source for source in video_sources if source.get('type') == 'video/mp4'), None)
-        
-        #     if mp4_video and mp4_video.get('url'):
-        #         st.video(mp4_video.get('url'))
-        if recipe.image_url:
-            # If only image is available, display it
-            st.image(recipe.image_url, caption=recipe.recipe_title)
-        
-        info = {
-            "Recipe Title": recipe.recipe_title,
-            "Cuisine Type": recipe.cuisine_type,
-            "Preparation Time": recipe.prep_time,
-            "Cooking Time": recipe.cook_time,
-            "Total Time": recipe.total_time,
-            "Serving Size": recipe.serving_size,
-            "Difficulty Level": recipe.difficulty_level,
-            "Ingredients": recipe.ingredients,
-        }
-        for key, value in info.items():
-            st.subheader(f"**{key}:**")
-            st.write(value)
+    st.title("🍽️ Deliciously Recipe 🍽️")
 
-        st.subheader("Instructions")
-        for step in recipe.instructions:
-            st.write(f"- {step}")
+    # Display recipe image or video if available
+    # if recipe.video_data and recipe.video_data.get('poster_url'):
+    #     # If video data is available, use the poster_url as the image
+    #     st.image(recipe.video_data.get('poster_url'), caption=recipe.recipe_title)
 
-        if recipe.extra_features:
-            st.subheader("Extra Features")
-            for key, value in recipe.extra_features.items():
-                st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
+    #     # Check if there's a video source with type "video/mp4"
+    #     video_sources = recipe.video_data.get('sources', [])
+    #     mp4_video = next((source for source in video_sources if source.get('type') == 'video/mp4'), None)
 
-        st.subheader("Nutritional Info")
-        st.write(recipe.nutritional_info)
+    #     if mp4_video and mp4_video.get('url'):
+    #         st.video(mp4_video.get('url'))
+    if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
+        # Only display if it's a valid URL
+        st.image(recipe.image_url, caption=recipe.recipe_title)
+    elif recipe.image_url:
+        # If there's an image URL but it's not valid, just display a message
+        st.write("Image not available")
 
-        st.subheader("Storage Instructions")
-        st.write(recipe.storage_instructions)
+    info = {
+        "Recipe Title": recipe.recipe_title,
+        "Cuisine Type": recipe.cuisine_type,
+        "Preparation Time": recipe.prep_time,
+        "Cooking Time": recipe.cook_time,
+        "Total Time": recipe.total_time,
+        "Serving Size": recipe.serving_size,
+        "Difficulty Level": recipe.difficulty_level,
+        "Ingredients": recipe.ingredients,
+    }
+    for key, value in info.items():
+        st.subheader(f"**{key}:**")
+        st.write(value)
 
-        st.session_state.recipe = recipe
-        recipe_generated = True
+    st.subheader("Instructions")
+    for step in recipe.instructions:
+        st.write(f"- {step}")
 
-        if existing_recipe:
-            st.info("This recipe was retrieved from **Belc's recipe collection**.")
-        else:
-            st.info("This recipe was generated by **ChatGPT** based on your preferences. **Please verify before cook**.")
+    if recipe.extra_features:
+        st.subheader("Extra Features")
+        for key, value in recipe.extra_features.items():
+            st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
-        # Reset trigger
-        # st.session_state.ready_for_recipe = False
-        # st.session_state.dish_suggestions = []
+    st.subheader("Nutritional Info")
+    st.write(recipe.nutritional_info)
+
+    st.subheader("Storage Instructions")
+    st.write(recipe.storage_instructions)
+
+    st.session_state.recipe = recipe
+    recipe_generated = True
+
+    # if existing_recipe:
+    #     st.info("This recipe was retrieved from **Belc's recipe collection**.")
+    # else:
+    #     st.info("This recipe was generated by **ChatGPT** based on your preferences. **Please verify before cook**.")
+
+    # Reset trigger
+    # st.session_state.ready_for_recipe = False
+    # st.session_state.dish_suggestions = []
 
 # Ingredient Matching & Cart
 if recipe_generated:

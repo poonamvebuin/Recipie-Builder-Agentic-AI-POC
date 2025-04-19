@@ -14,6 +14,18 @@ from deep_translator import GoogleTranslator
 
 load_dotenv()
 
+from agno.knowledge.json import JSONKnowledgeBase
+from agno.vectordb.pgvector import PgVector
+
+knowledge_base = JSONKnowledgeBase(
+    path="recipe_data/all_recipes.json",
+    # Table name: ai.json_documents
+    vector_db=PgVector(
+        table_name="json_documents",
+        db_url="postgresql+psycopg://postgres:root@localhost:5432/agno_db",
+    ),
+)
+
 class VideoSource(BaseModel):
     url: str
     type: str
@@ -38,6 +50,8 @@ class RecipeOutput(BaseModel):
     storage_instructions: Optional[str] = None
     extra_features: Optional[Dict[str, str]] = None
     image_url: Optional[str] = None
+    suggestions: Optional[List[str]] = None
+    explanation: Optional[str] = None
     # video_data: Optional[VideoData] = None
     # model_config = ConfigDict(
     #     extra='forbid',
@@ -100,7 +114,7 @@ def get_agent():
 
     agent = Agent(
         name="Recipe Agent",
-        model=OpenAIChat(id="gpt-4o"),
+        model=OpenAIChat(id="gpt-4o-mini"),
         description=dedent("""\
             You are ChefGenius, a passionate and knowledgeable culinary expert with expertise in global cuisine! 🍳
 
@@ -109,9 +123,26 @@ def get_agent():
             and time constraints. You combine deep culinary knowledge with nutritional wisdom
             to suggest recipes that are both practical and enjoyable.
         """),
-
+        knowledge=knowledge_base,
+        search_knowledge=True,
         instructions=dedent("""\
-            Approach each recipe recommendation with these steps:
+            You have two main functions:
+
+            1. Recipe Suggestions:
+            When users ask for recipe ideas or have specific preferences:
+            - Analyze their preferences (taste, time, dietary restrictions)
+            - Search for matching recipes in the database
+            - Provide a list of suggestions with brief descriptions
+            - Format suggestions under "RECIPE SUGGESTIONS:" heading
+            - Include both Japanese and English names for Japanese dishes
+
+            2. Detailed Recipe Information:
+            When a specific recipe is chosen:
+            - Provide complete recipe details
+            - Include all standard recipe components
+            - Add helpful tips and variations
+
+            For both functions, follow these steps:
 
             1. Analysis Phase 📋
             - Understand available ingredients
@@ -120,8 +151,8 @@ def get_agent():
             - Factor in cooking skill level
             - Check for kitchen equipment needs
 
-            2. Recipe Selection 🔍
-            - Use Exa to search for relevant recipes
+            2. Recipe Selection/Details 🔍
+            - Use database to search for relevant recipes
             - Ensure ingredients match availability
             - Verify cooking times are appropriate
             - Consider seasonal ingredients
@@ -161,20 +192,19 @@ def get_agent():
             - Suggest side dish pairings
 
             Ingredients Section:
-            - Present ingredients in a structured list with measurements.
-            - Clearly list each ingredient under the Ingredients heading, with units and amounts.
-            - Use bullet points or numbered lists for clarity.
-            - Ensure any special dietary notes or substitutions are included next to the relevant ingredients.
+            - Present ingredients in a structured list with measurements
+            - Clearly list each ingredient under the Ingredients heading
+            - Use bullet points or numbered lists for clarity
+            - Include dietary notes and substitutions
             
             Image:
-            - Generate image of dish   
-            
+            - Generate image of dish when providing detailed recipe
         """),
 
         markdown=True,
         add_datetime_to_instructions=True,
         show_tool_calls=True,
-        # storage=storage,
+        read_chat_history=True,
         response_model=RecipeOutput
     )
     return agent
