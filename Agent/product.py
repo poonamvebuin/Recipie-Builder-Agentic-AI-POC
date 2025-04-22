@@ -29,24 +29,28 @@ def get_available_ingredients(recipe_ingredients, language):
     ingredient_list = [i.strip() for i in recipe_ingredients.split('\n') if i]
     # print('---ingredient_list----', ingredient_list)
 
+    cleaned_ingredients = [clean_ingredient(i) for i in ingredient_list]
+    # print('---cleaned_ingredients---', cleaned_ingredients)
+
     if language.lower() != "Japanese":
         try:
             ingredient_list = [
                 GoogleTranslator(source='auto', target='ja').translate(i)
-                for i in ingredient_list
+                for i in cleaned_ingredients
             ]
+            print('------translated-ingredient_list----', ingredient_list)
         except Exception as e:
             print("Translation failed:", e)
 
-    cleaned_ingredients = [clean_ingredient(i) for i in ingredient_list]
+    # cleaned_ingredients = [clean_ingredient(i) for i in ingredient_list]
     # print('---cleaned_ingredients---', cleaned_ingredients)
 
     products_db = search_products()
     # print('----products_db---', products_db)
     products_db = [list(p) for p in products_db]
 
-    matches = find_similar_products(cleaned_ingredients, products_db)
-    # print('--------matches--------', matches)
+    matches = find_similar_products(ingredient_list, products_db)
+    print('--------matches--------', matches)
 
     return [
         {

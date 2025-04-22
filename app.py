@@ -5,7 +5,7 @@ from agno.agent import RunResponse
 import json
 import re
 
-from Agent.recipe import get_agent
+from Agent.recipe import get_agent, search_for_recipe_exact
 from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
 from Agent.supervisor import get_supervisor_agent
@@ -83,7 +83,7 @@ def clean_recipe_name(recipe_text):
         recipe_text = re.sub(r'\[.*?\]', '', recipe_text)
 
     # Remove trailing punctuation and whitespace
-    recipe_text = recipe_text.strip('.,;:!?() \t\n\r')
+    recipe_text = recipe_text.strip().rstrip('.,;:!?')
 
     return recipe_text.strip()
 
@@ -231,8 +231,8 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
         context_messages.append({"role": "user", "content": prompt})
         msg = context_messages
 
-    response_iterator = st.session_state.supervisor_agent.run(message=prompt, stream=True)
-    # response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
+    # response_iterator = st.session_state.supervisor_agent.run(message=prompt, stream=True)
+    response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
     with st.chat_message("assistant"):
         full_response = st.write_stream(stream_response_chunks(response_iterator))
 
@@ -270,7 +270,7 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
             line = line.strip()
             if line:
                 # Remove common punctuation that might appear
-                if line.endswith((".", ",", ";", "?", "!", ":", ")", "）", "。", "、", "！", "？", "：", "；")):
+                if line.endswith((".", ",", ";", "?", "!", ":", "。", "、", "！", "？", "：", "；")):
                     line = line[:-1].strip()
 
                 # Clean the recipe name
@@ -340,78 +340,96 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
 
     preferences_context = ""
     if st.session_state.preferences_collected:
-        preferences_context = f"""
-        User Preferences:
-        - Taste: {st.session_state.preferences['taste']}
-        - Cooking Time: {st.session_state.preferences['cooking_time']}
-        - Ingredients to include: {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}
-        - Allergies/Avoid: {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}
-        - Diet: {st.session_state.preferences['diet']}
-        """
+        preferences = st.session_state.preferences
+        preferences_list = []
+
+        if preferences['taste'] and preferences['taste'] != "No Preference":
+            preferences_list.append(f"- Taste: {preferences['taste']}")
+        
+        if preferences['cooking_time'] and preferences['cooking_time'] != "No Preference":
+            preferences_list.append(f"- Cooking Time: {preferences['cooking_time']}")
+        
+        if preferences['ingredients']:
+            if preferences['ingredients']:
+                preferences_list.append(f"- Ingredients to include: {', '.join(preferences['ingredients'])}")
+        
+        if preferences['allergies']:
+            if preferences['allergies']:
+                preferences_list.append(f"- Allergies/Avoid: {', '.join(preferences['allergies'])}")
+        
+        if preferences['diet'] and preferences['diet'] != "No Preference":
+            preferences_list.append(f"- Diet: {preferences['diet']}")
+
+        # Join all valid preferences together
+        if preferences_list:
+            preferences_context = "User Preferences:\n" + "\n".join(preferences_list)
 
     # Construct prompt for recipe agent using context
-    prompt = (
-        f"Provide response in the language: {language}.\n"
-        f"User Preferences:\n{preferences_context}\n"
-        f"Conversation Context:\n{conversation_history}\n\n"
-        f"Based on the above preferences, generate a recipe for '{st.session_state.final_dish_choice}'.\n"
-        f"IMPORTANT: Do not include placeholder URLs for images. If you don't have a valid image URL, leave the image_url field empty."
-    )
+    cleaned_dish_name = re.sub(r'\s*\(.*?\)', '', st.session_state.final_dish_choice)
 
-    run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
-    recipe = run_response.content
+    
+    recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
+    if recipe_from_json:
+        prompt = (f"{preferences_context}\n"
+                 f"Rephrase the recipe in JAPANESE:{recipe_from_json}"
+        )
+        run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
+        recipe = run_response.content
+    
+        st.title("🍽️ Deliciously Recipe 🍽️")
 
-    st.title("🍽️ Deliciously Recipe 🍽️")
+        # Display recipe image or video if available
+        # if recipe.video_data and recipe.video_data.get('poster_url'):
+        #     # If video data is available, use the poster_url as the image
+        #     st.image(recipe.video_data.get('poster_url'), caption=recipe.recipe_title)
 
-    # Display recipe image or video if available
-    # if recipe.video_data and recipe.video_data.get('poster_url'):
-    #     # If video data is available, use the poster_url as the image
-    #     st.image(recipe.video_data.get('poster_url'), caption=recipe.recipe_title)
+        #     # Check if there's a video source with type "video/mp4"
+        #     video_sources = recipe.video_data.get('sources', [])
+        #     mp4_video = next((source for source in video_sources if source.get('type') == 'video/mp4'), None)
 
-    #     # Check if there's a video source with type "video/mp4"
-    #     video_sources = recipe.video_data.get('sources', [])
-    #     mp4_video = next((source for source in video_sources if source.get('type') == 'video/mp4'), None)
+        #     if mp4_video and mp4_video.get('url'):
+        #         st.video(mp4_video.get('url'))
 
-    #     if mp4_video and mp4_video.get('url'):
-    #         st.video(mp4_video.get('url'))
-    if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
-        # Only display if it's a valid URL
-        st.image(recipe.image_url, caption=recipe.recipe_title)
-    elif recipe.image_url:
-        # If there's an image URL but it's not valid, just display a message
-        st.write("Image not available")
+        if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
+            # Only display if it's a valid URL
+            st.image(recipe.image_url, caption=recipe.recipe_title)
+        elif recipe.image_url:
+            # If there's an image URL but it's not valid, just display a message
+            st.write("Image not available")
 
-    info = {
-        "Recipe Title": recipe.recipe_title,
-        "Cuisine Type": recipe.cuisine_type,
-        "Preparation Time": recipe.prep_time,
-        "Cooking Time": recipe.cook_time,
-        "Total Time": recipe.total_time,
-        "Serving Size": recipe.serving_size,
-        "Difficulty Level": recipe.difficulty_level,
-        "Ingredients": recipe.ingredients,
-    }
-    for key, value in info.items():
-        st.subheader(f"**{key}:**")
-        st.write(value)
+        info = {
+            "Recipe Title": recipe.recipe_title,
+            "Cuisine Type": recipe.cuisine_type,
+            "Preparation Time": recipe.prep_time,
+            "Cooking Time": recipe.cook_time,
+            "Total Time": recipe.total_time,
+            "Serving Size": recipe.serving_size,
+            "Difficulty Level": recipe.difficulty_level,
+            "Ingredients": recipe.ingredients,
+        }
+        for key, value in info.items():
+            st.subheader(f"**{key}:**")
+            st.write(value)
 
-    st.subheader("Instructions")
-    for step in recipe.instructions:
-        st.write(f"- {step}")
+        st.subheader("Instructions")
+        for step in recipe.instructions:
+            st.write(f"- {step}")
 
-    if recipe.extra_features:
-        st.subheader("Extra Features")
-        for key, value in recipe.extra_features.items():
-            st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
+        if recipe.extra_features:
+            st.subheader("Extra Features")
+            for key, value in recipe.extra_features.items():
+                st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
-    st.subheader("Nutritional Info")
-    st.write(recipe.nutritional_info)
+        st.subheader("Nutritional Info")
+        st.write(recipe.nutritional_info)
 
-    st.subheader("Storage Instructions")
-    st.write(recipe.storage_instructions)
+        st.subheader("Storage Instructions")
+        st.write(recipe.storage_instructions)
 
-    st.session_state.recipe = recipe
-    recipe_generated = True
+        st.session_state.recipe = recipe
+        recipe_generated = True
+    else:
+        st.error(f"No reccipe found for{cleaned_dish_name}")
 
 
 # Ingredient Matching & Cart
