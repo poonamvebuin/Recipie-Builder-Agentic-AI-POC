@@ -370,8 +370,13 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
     
     recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
     if recipe_from_json:
-        prompt = (f"{preferences_context}\n"
-                 f"Rephrase the recipe in JAPANESE:{recipe_from_json}"
+        prompt = (
+            f"Please translate the following recipe into {language}:\n\n"
+            f"{preferences_context}\n\n"
+            f"Recipe: {recipe_from_json}\n\n"
+            f"Adjust the ingredients, times and quantities proportionally to match for given {conversation_history} servings. "
+            f"Ensure that all quantities are modified proportionally and the INGREDIANTS appear on separate lines. "
+            f"Do not omit any important details in the translation."
         )
         run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
         recipe = run_response.content
