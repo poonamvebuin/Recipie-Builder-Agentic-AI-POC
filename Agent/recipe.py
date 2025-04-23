@@ -59,12 +59,18 @@ def load_recipe_data(json_path="recipe_data/all_recipes.json"):
 def search_for_recipe_exact(title: str):
 
     recipe_data = load_recipe_data()  
-    # print('-------------recipe_data', recipe_data)  
     for recipe in recipe_data:
-        # print('-------------recipe', recipe) 
-        if recipe.get('title', '') == title:
-        
-        
+        # print('-----search--------recipe', recipe) 
+        # print('-----get-------title', recipe.get('title', ''))
+        if recipe.get('title', '').strip() == title.strip():
+
+            serving_size = None
+            servings_info = recipe.get("servings", {})
+            if 'value' in servings_info:
+                serving_size = f"{servings_info.get('value')} {servings_info.get('unit', '')}".strip()
+            if serving_size is None:
+                serving_size = servings_info.get("raw_text", None)
+
             result = {
                 "recipe_title": recipe.get("title", ""),
                 "cuisine_type": recipe.get("source", None),  
@@ -73,7 +79,7 @@ def search_for_recipe_exact(title: str):
                 "total_time": recipe.get("cooking_time", {}).get("value", None),
                 "ingredients": "\n".join([ingredient['name'] for ingredient in recipe.get("ingredients", [])]),
                 "instructions": recipe.get("steps", []),
-                "serving_size": recipe.get("servings", {}).get("value", None),
+                "serving_size": serving_size,
                 "image_url": recipe.get("image_url", None),
             }
             
@@ -95,10 +101,9 @@ def search_for_recipe_exact(title: str):
             
             if recipe.get("explanation"):
                 result["explanation"] = recipe.get("explanation")
-            
             return result
-        
     return None
+        
 
 # Function to create the agent
 # def get_agent():

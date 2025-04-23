@@ -366,7 +366,7 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
 
     # Construct prompt for recipe agent using context
     cleaned_dish_name = re.sub(r'\s*\(.*?\)', '', st.session_state.final_dish_choice)
-
+    cleaned_dish_name = re.sub(r'^\s*-*\s*', '', cleaned_dish_name)
     
     recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
     if recipe_from_json:
