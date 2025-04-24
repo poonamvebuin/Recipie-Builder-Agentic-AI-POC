@@ -77,7 +77,7 @@ CREATE TABLE ai.products (
 );
 ```
 
-Now, export data from the given csv file for this table.
+Now, export data from the given csv file named products inside Databse folder for this table.
 
 
 
