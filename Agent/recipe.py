@@ -15,14 +15,14 @@ from agno.vectordb.pgvector import PgVector
 db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
 
 # Initialize knowledge base and vector database
-knowledge_base = JSONKnowledgeBase(
-    path="recipe_data/all_recipes.json",
-    vector_db=PgVector(
-        table_name="json_documents",
-        db_url = db_url
+# knowledge_base = JSONKnowledgeBase(
+#     path="recipe_data/all_recipes.json",
+#     vector_db=PgVector(
+#         table_name="json_documents",
+#         db_url = db_url
         
-    ),
-)
+#     ),
+# )
 
 # Define VideoSource and VideoData models if needed, omitted for brevity
 
@@ -150,15 +150,15 @@ def get_agent():
     agent = Agent(
         name="Recipe Agent",
         model=OpenAIChat(id="gpt-4o-mini"),
-        system_message=dedent("""
-            Your task is to output the recipe details exactly as provided in the input.
+        system_message = dedent(f"""
+            Your task is to provide the recipe details in the language specified by the user.
             IMPORTANT:
-            - DO NOT TRANSLATE the recipe into any language. 
-            - Maintain the original Japanese language of the recipe.
-            - Ensure that the recipe is not rephrased, translated, or modified in any way except for minor adjustments based on the user's preferences (like serving size).
-            - If any modifications are made, **keep the original language intact**.
-            - Modify recipe based on people.
-            - GIVE RESPONSE ONLY ONCE.
+            - Translate the recipe into the language provided by the user.
+            - Maintain the original meaning and context of the recipe.
+            - If the recipe is in a different language than translate it accordingly.
+            - Modify the recipe only if the number of people is more than the current servings. Adjust the ingredients, time, instructions proportionally.
+            - When outputting the ingredients, ensure each ingredient appears on a **new line**.
+            - If the ingredients contain line breaks (`\n`), maintain them and output each ingredient on a **separate line**.
         """),
         search_knowledge=True, 
         markdown=True,

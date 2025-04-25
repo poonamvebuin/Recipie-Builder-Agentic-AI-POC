@@ -144,23 +144,32 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
     user_message_count = sum(1 for msg in st.session_state.supervisor_history if msg["role"] == "user")
 
     # Check if the request is specifically for recipe suggestions based on preferences
-    is_suggestion_request = any(keyword in user_input.lower() for keyword in
-                                ["suggest", "recommendation", "what can i make", "recipe", "dish"])
+    # is_suggestion_request = any(keyword in user_input.lower() for keyword in
+    #                             ["suggest", "recommendation", "what can i make", "recipe", "dish"])
 
     # Check if the request is specifically for Japanese recipes
     st.session_state.is_japanese_request = "japanese" in user_input.lower() or "japan" in user_input.lower() or "日本" in user_input
-
-    if is_suggestion_request and st.session_state.preferences_collected:
+    if st.session_state.preferences_collected:
+        text = ""
+        if st.session_state.preferences['taste']:
+             text += f" - Taste must be {st.session_state.preferences['taste']}"
+        if st.session_state.preferences['cooking_time']:
+            text += f" - Cooking Time must be {st.session_state.preferences['cooking_time']}"
+        if st.session_state.preferences['ingredients']:
+            text += f" - Ingredients to include: {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}"
+        if st.session_state.preferences['allergies']:
+            text += f"""MOST IMPORTANT: Suggest Recipe which don't have mentioned Allergies
+            Allergies/Avoid: {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}
+            """
+        if st.session_state.preferences['diet']:
+            text += f" - Diet must be {st.session_state.preferences['diet']}."
         # Include user preferences in the prompt
         preferences_text = f"""
-        User Preferences:
-        - Taste: {st.session_state.preferences['taste']}
-        - Cooking Time: {st.session_state.preferences['cooking_time']}
-        - Ingredients to include: {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}
-        - Allergies/Avoid: {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}
-        - Diet: {st.session_state.preferences['diet']}
+        IMPORTANT USER PREFERENCES:
+        {text}
 
         Based on these preferences and the user's request: "{user_input}", suggest 5 suitable recipes.
+        Please ensure All the user preferences must be satisfied
 
         IMPORTANT FORMATTING RULES:
         1. Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
@@ -230,7 +239,7 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
         # Add current message
         context_messages.append({"role": "user", "content": prompt})
         msg = context_messages
-
+    print(msg)
     # response_iterator = st.session_state.supervisor_agent.run(message=prompt, stream=True)
     response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
     with st.chat_message("assistant"):
@@ -370,8 +379,13 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
     
     recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
     if recipe_from_json:
-        prompt = (f"{preferences_context}\n"
-                 f"Rephrase the recipe in JAPANESE:{recipe_from_json}"
+        prompt = (
+            f"Please translate the following recipe into {language}:\n\n"
+            f"{preferences_context}\n\n"
+            f"Recipe: {recipe_from_json}\n\n"
+            f"Adjust the ingredients, times and quantities proportionally to match for given {conversation_history} servings. "
+            f"Ensure that all quantities are modified proportionally and the INGREDIANTS appear on separate lines. "
+            f"Do not omit any important details in the translation."
         )
         run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(prompt, stream=True)
         recipe = run_response.content
