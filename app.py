@@ -4,7 +4,7 @@ from typing import Iterator
 from agno.agent import RunResponse
 import json
 import re
-
+import pandas as pd
 from Agent.recipe import get_agent, search_for_recipe_exact
 from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
@@ -73,6 +73,7 @@ def stream_response_chunks(response_iterator: Iterator[RunResponse]):
 def clean_recipe_name(recipe_text):
     """Clean recipe text to remove URLs and other unwanted elements"""
     # Remove URLs (http://, https://, www.)
+    # print("RECIPE TEXT beforeee+++++++++",recipe_text)
     recipe_text = re.sub(r'https?://\S+|www\.\S+', '', recipe_text)
 
     # Remove any text after a hyphen or dash if it looks like a description
@@ -84,7 +85,7 @@ def clean_recipe_name(recipe_text):
 
     # Remove trailing punctuation and whitespace
     recipe_text = recipe_text.strip().rstrip('.,;:!?')
-
+    # print("RECIPE TEXT++++++++++",recipe_text)
     return recipe_text.strip()
 
 
@@ -250,7 +251,6 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
 
     # Extract suggestions for button display
     dish_suggestions = []
-
     # First try to parse as JSON (in case the model returns JSON)
     try:
         json_response = json.loads(full_response)
@@ -403,47 +403,69 @@ if st.session_state.ready_for_recipe and st.session_state.final_dish_choice:
 
         #     if mp4_video and mp4_video.get('url'):
         #         st.video(mp4_video.get('url'))
+        st.subheader("Recipe Title")
+        st.write(recipe.recipe_title)
 
         if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
-            # Only display if it's a valid URL
             st.image(recipe.image_url, caption=recipe.recipe_title)
         elif recipe.image_url:
-            # If there's an image URL but it's not valid, just display a message
             st.write("Image not available")
-
+        if recipe.mp4_url and recipe.mp4_url.startswith(('http://', 'https://')):
+            st.video(recipe.mp4_url)
+        else:
+            st.write("Video not available")
         info = {
-            "Recipe Title": recipe.recipe_title,
             "Cuisine Type": recipe.cuisine_type,
-            "Preparation Time": recipe.prep_time,
-            "Cooking Time": recipe.cook_time,
-            "Total Time": recipe.total_time,
+            "Total Time (Cooking + Preparation)": recipe.total_time,
             "Serving Size": recipe.serving_size,
             "Difficulty Level": recipe.difficulty_level,
-            "Ingredients": recipe.ingredients,
         }
         for key, value in info.items():
             st.subheader(f"**{key}:**")
             st.write(value)
 
-        st.subheader("Instructions")
+        st.subheader("Ingredients:")
+        for i, value in enumerate(recipe.ingredients.split("\n"), start=1):
+            st.write(f"{i}. {value}")
+
+        st.subheader("Instructions:")
         for step in recipe.instructions:
             st.write(f"- {step}")
 
         if recipe.extra_features:
-            st.subheader("Extra Features")
+            st.subheader("Extra Features:")
             for key, value in recipe.extra_features.items():
                 st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
-        st.subheader("Nutritional Info")
-        st.write(recipe.nutritional_info)
-
-        st.subheader("Storage Instructions")
-        st.write(recipe.storage_instructions)
+        st.subheader("Nutritional Information")
+        if recipe.nutrients:
+                
+            #Display nutritional information
+            df = pd.DataFrame(recipe.nutrients.items(), columns=["Nutrient", "Amount"])
+            df_no_index = df.reset_index(drop=True)
+            styled_df = df_no_index.style.set_table_styles(
+                [{
+                    'selector': 'thead th',
+                    'props': [('background-color', '#f1f1f1'), ('color', 'black'), ('font-weight', 'bold')]
+                }, {
+                    'selector': 'tbody td',
+                    'props': [('padding', '10px'), ('text-align', 'center')]
+                }]
+            ).set_properties(**{
+                'font-size': '14px',
+                'font-family': 'Arial, sans-serif',
+                'color': '#333333'
+            })
+            
+            
+            st.dataframe(styled_df)
+        else:
+            st.write("No nutritional info found!")
 
         st.session_state.recipe = recipe
         recipe_generated = True
     else:
-        st.error(f"No reccipe found for{cleaned_dish_name}")
+        st.error(f"No recipe found for{cleaned_dish_name}")
 
 
 # Ingredient Matching & Cart

@@ -34,14 +34,14 @@ class RecipeOutput(BaseModel):
     total_time: Optional[str] = None
     ingredients: Optional[str] = None
     instructions: Optional[List[str]] = None
-    nutritional_info: Optional[str] = None
+    nutrients: Optional[Dict[str, str]] = None
     difficulty_level: Optional[str] = None
     serving_size: Optional[str] = None
-    storage_instructions: Optional[str] = None
     extra_features: Optional[Dict[str, str]] = None
     image_url: Optional[str] = None
     suggestions: Optional[List[str]] = None
     explanation: Optional[str] = None
+    mp4_url: Optional[str] = None
 
 
 import json
@@ -70,28 +70,43 @@ def search_for_recipe_exact(title: str):
                 serving_size = f"{servings_info.get('value')} {servings_info.get('unit', '')}".strip()
             if serving_size is None:
                 serving_size = servings_info.get("raw_text", None)
+            mp4_url = None
+            poster_url=None
+            # nutrients=None
+            if recipe.get("source", None)=="delishkitchen":
+                #image for delishikitchen
+                try:
+                    poster_url = recipe.get("video_data",{}).get("poster_url")
+                except KeyError:
+                    poster_url = None
 
+                # video url extraction for mp4 video
+                sources = recipe.get("video_data", {}).get("sources", [])
+                
+                for source in sources:
+                    if source.get("type") == "video/mp4":
+                        mp4_url = source.get("url")
+                        break      
+                # nutrients=recipe.get("nutrients",None) 
+            else:
+                poster_url = recipe.get("image_url", None)
+            #total cooking time
+            total_cooking_time = recipe.get("cooking_time", {}).get("value", None)+recipe.get("cooking_time", {}).get("value", None)
+            print("STEPS:::::",recipe.get("steps"))
             result = {
                 "recipe_title": recipe.get("title", ""),
                 "cuisine_type": recipe.get("source", None),  
-                "prep_time": recipe.get("cooking_time", {}).get("value", None),
-                "cook_time": recipe.get("cooking_time", {}).get("value", None),
-                "total_time": recipe.get("cooking_time", {}).get("value", None),
+                "total_time": total_cooking_time,
                 "ingredients": "\n".join([ingredient['name'] for ingredient in recipe.get("ingredients", [])]),
                 "instructions": recipe.get("steps", []),
                 "serving_size": serving_size,
-                "image_url": recipe.get("image_url", None),
+                "image_url":poster_url ,
+                "mp4_url":mp4_url,
+                "nutrients":recipe.get("nutrients",None) 
             }
-            
-            
-            if recipe.get("nutritional_info"):
-                result["nutritional_info"] = recipe.get("nutritional_info")
-            
+                    
             if recipe.get("difficulty_level"):
                 result["difficulty_level"] = recipe.get("difficulty_level")
-            
-            if recipe.get("storage_instructions"):
-                result["storage_instructions"] = recipe.get("storage_instructions")
             
             if recipe.get("extra_features"):
                 result["extra_features"] = recipe.get("extra_features")
