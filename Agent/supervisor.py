@@ -31,15 +31,6 @@ class SupervisorResponse(BaseModel):
     message: str
     suggestions: List[str]
 
-# Helper function to translate English queries to Japanese
-def translate_to_japanese(text):
-    try:
-        translator = GoogleTranslator(source='en', target='ja')
-        return translator.translate(text)
-    except Exception as e:
-        print(f"Translation error: {e}")
-        return text  # Return original text if translation fails
-
 
 # Load the actual recipe data to ensure we have exact recipe titles
 def load_recipe_data(json_path="recipe_data/all_recipes.json"):
@@ -84,11 +75,12 @@ def get_supervisor_agent():
         system_message=f"""
         You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
 
-        IMPORTANT: Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
+        IMPORTANT: 
+        - Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
         {', '.join(japanese_recipe_titles)}
-
-        Formatted recipe titles with English translations (when available):
+        - Formatted recipe titles with English translations (when available):
         {recipe_titles}
+        - ALWAY SUGGEST 5 RECIPES
 
         STRICT RULES:
         1. You must ONLY suggest recipes with titles that EXACTLY match those in our database list above

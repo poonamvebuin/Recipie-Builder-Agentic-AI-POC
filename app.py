@@ -9,6 +9,7 @@ from Agent.recipe import get_agent, search_for_recipe_exact
 from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
 from Agent.supervisor import get_supervisor_agent
+from Agent.weather import get_cities_in_country, get_weather
 
 # Streamlit Config
 st.set_page_config(page_title="Recipe Builder", layout="centered")
@@ -17,6 +18,28 @@ st.set_page_config(page_title="Recipe Builder", layout="centered")
 st.sidebar.header("🌐 Language Preferences")
 language_options = ["English", "Japanese"]
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
+
+st.sidebar.header("📍 Your Location")
+
+# Input for country
+countries_options = ["None", "India", "Japan"]
+country = st.sidebar.selectbox("Enter your country:", countries_options, index=0)
+
+city = None
+weather_data = None
+if country != "None":
+    cities = get_cities_in_country(country)
+    if cities:
+        city = st.sidebar.selectbox("Choose a city", cities)
+        if city != "None":
+            print('-------city', city)
+            weather_data = get_weather(city, country)
+            print('----------weather', weather_data)
+            if weather_data:
+                st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
+                # st.sidebar.write(f"💧 Humidity: {weather_data['humidity']}%")
+                st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
+
 
 # App Header
 # st.title("🍳 Recipe Creation Assistant 🍳")
@@ -27,6 +50,8 @@ if "recipe_agent" not in st.session_state:
     st.session_state.recipe_agent = get_agent()
 if "supervisor_agent" not in st.session_state:
     st.session_state.supervisor_agent = get_supervisor_agent()
+# if "weather_agent" not in st.session_state:
+#     st.session_state.weather_agent = get_weather_agent()
 if "supervisor_history" not in st.session_state:
     st.session_state.supervisor_history = []
 if "final_dish_choice" not in st.session_state:
@@ -210,21 +235,22 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
         prompt += f"""
         IMPORTANT FORMATTING RULES: 
         - Generate response in {language}
+        - alway give msg like this when no preference: give msg like i search for prefrnce but no prefrence so i will suggest some recipes
         - Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
         - List each recipe on a new line
         - For Japanese recipes, use format: "寿司 (Sushi)" - Japanese name first, then English in parentheses
         - ONLY include the recipe names - NO URLs, NO image links, NO descriptions, NO additional text
         - DO NOT use JSON format
-
-        Example correct format:
-        Here are some recipe suggestions based on your preferences.
-
-        RECIPE SUGGESTIONS:
-        寿司 (Sushi)
-        天ぷら (Tempura)
-        ラーメン (Ramen)
         """
-
+    if weather_data:
+        prompt += f"""MUST ADD WEATHER DETAILS AND SUGGEST RECIPE
+            {weather_data['temperature']}:
+                - If the temperature is over 30°C and the weather is hot or sunny, suggest cold or refreshing dishes, drinks.
+                - If the temperature is below 15°C and the weather is cold, suggest warm and comforting dishes, drinks.
+                - If the temperature is between 15°C and 30°C, suggest balanced dishes,drinks that are neither too hot nor too cold.
+            {weather_data['description']}:
+                - If  weather data includes the word **rain**: suggest meal based on rain"""
+        
     msg = [{"role": "user", "content": prompt}]
 
     # Include conversation history for context if this isn't the first message
@@ -242,6 +268,8 @@ if user_input := st.chat_input("Ask for a recipe suggestion..."):
     print(msg)
     # response_iterator = st.session_state.supervisor_agent.run(message=prompt, stream=True)
     response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
+    # print('------------msg', msg)
+    # response_iterator = st.session_state.weather_agent.run(messages=msg, stream=True)
     with st.chat_message("assistant"):
         full_response = st.write_stream(stream_response_chunks(response_iterator))
 
