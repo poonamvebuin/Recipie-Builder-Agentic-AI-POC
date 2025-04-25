@@ -30,7 +30,12 @@ def find_similar_products(cleaned_ingredients, products_db, threshold=85):
     return list(results)
 
 def get_available_ingredients(recipe_ingredients, language):
-    ingredient_list = [i.strip() for i in recipe_ingredients.split('\n') if i]
+    if isinstance(recipe_ingredients, list):
+        ingredient_list = [i.strip() for i in recipe_ingredients if i]
+    elif isinstance(recipe_ingredients, str):
+        ingredient_list = [i.strip() for i in recipe_ingredients.split(",") if i]
+    else:
+        ingredient_list = []
     # print('---ingredient_list----', ingredient_list)
 
     cleaned_ingredients = [clean_ingredient(i) for i in ingredient_list]
@@ -49,6 +54,7 @@ def get_available_ingredients(recipe_ingredients, language):
         ingredient_list = cleaned_ingredients
 
     products_db = search_products()
+    # print('----product_db', products_db)
     products_db = [list(p) for p in products_db]
 
     matches = find_similar_products(ingredient_list, products_db)
@@ -65,7 +71,7 @@ def get_available_ingredients(recipe_ingredients, language):
                 "Weight": f"{match[5]} {match[6]}"
             }
             translated_matches.append(translated_match)
-
+        # print('---------translated_matches-------', translated_matches)
         return translated_matches
     else:
         return [
