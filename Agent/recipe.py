@@ -6,23 +6,18 @@ from agno.storage.postgres import PostgresStorage
 from textwrap import dedent
 import os
 from dotenv import load_dotenv
+import json
+import re
+import time
+from typing import Iterator
+from agno.agent import RunResponse
 
 load_dotenv()
 
-from agno.knowledge.json import JSONKnowledgeBase
-from agno.vectordb.pgvector import PgVector
+
 
 db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
 
-# Initialize knowledge base and vector database
-# knowledge_base = JSONKnowledgeBase(
-#     path="recipe_data/all_recipes.json",
-#     vector_db=PgVector(
-#         table_name="json_documents",
-#         db_url = db_url
-        
-#     ),
-# )
 
 # Define VideoSource and VideoData models if needed, omitted for brevity
 
@@ -43,8 +38,35 @@ class RecipeOutput(BaseModel):
     explanation: Optional[str] = None
     mp4_url: Optional[str] = None
 
+# Function to stream assistant response using a generator
+def stream_response_chunks(response_iterator: Iterator[RunResponse]):
+    try:
+        # Handle iterable response
+        for chunk in response_iterator:
+            yield chunk.content
+            time.sleep(0.01)
+    except TypeError:
+        # Handle non-iterable response (single RunResponse object)
+        if hasattr(response_iterator, 'content'):
+            yield response_iterator.content
 
-import json
+
+def clean_recipe_name(recipe_text):
+    """Clean recipe text to remove URLs and other unwanted elements"""
+    # Remove URLs (http://, https://, www.)
+    recipe_text = re.sub(r'https?://\S+|www\.\S+', '', recipe_text)
+
+    # Remove any text after a hyphen or dash if it looks like a description
+    recipe_text = re.sub(r'\s+-\s+.*$', '', recipe_text)
+
+    # Remove any text in square brackets that's not part of Japanese formatting
+    if not any(ord(char) > 127 for char in recipe_text):  # If not Japanese
+        recipe_text = re.sub(r'\[.*?\]', '', recipe_text)
+
+    # Remove trailing punctuation and whitespace
+    recipe_text = recipe_text.strip().rstrip('.,;:!?')
+
+    return recipe_text.strip()
 
 def load_recipe_data(json_path="recipe_data/all_recipes.json"):
     try:
