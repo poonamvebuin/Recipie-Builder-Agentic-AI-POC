@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from Agent.recipe import get_agent
 from Agent.supervisor import get_supervisor_agent
 from streamlit_app.streamlit_welcom import display_welcome_message

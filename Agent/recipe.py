@@ -24,19 +24,18 @@ db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')
 class RecipeOutput(BaseModel):
     recipe_title: str
     cuisine_type: Optional[str] = None
-    prep_time: Optional[str] = None
     cook_time: Optional[str] = None
     total_time: Optional[str] = None
     ingredients: Optional[str] = None
     instructions: Optional[List[str]] = None
-    nutritional_info: Optional[str] = None
+    nutrients: Optional[Dict[str, str]] = None
     difficulty_level: Optional[str] = None
     serving_size: Optional[str] = None
-    storage_instructions: Optional[str] = None
     extra_features: Optional[Dict[str, str]] = None
     image_url: Optional[str] = None
     suggestions: Optional[List[str]] = None
     explanation: Optional[str] = None
+    mp4_url: Optional[str] = None
 
 # Function to stream assistant response using a generator
 def stream_response_chunks(response_iterator: Iterator[RunResponse]):
@@ -85,35 +84,76 @@ def search_for_recipe_exact(title: str):
         # print('-----search--------recipe', recipe) 
         # print('-----get-------title', recipe.get('title', ''))
         if recipe.get('title', '').strip() == title.strip():
+            raw_steps = recipe.get("steps", [])
+            processed_instructions = []
+            
+            if not raw_steps:
+                processed_instructions = []
+            elif isinstance(raw_steps[0], dict):
+                for i, step in enumerate(raw_steps, 1):
+                    desc = step.get("description", "")
+                    processed_instructions.append(f"{i}. {desc}")
+            
+            else:
+                for i, step in enumerate(raw_steps, 1):
+                    clean_step = step
+                    jp_numbers = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+                    if any(clean_step.startswith(jp_num) for jp_num in jp_numbers):
+                        for j, jp_num in enumerate(jp_numbers, 1):
+                            if clean_step.startswith(jp_num):
+                                clean_step = clean_step[1:].strip()
+                                break
+                    elif (clean_step.strip() and 
+                          (clean_step[0].isdigit() or 
+                           clean_step.startswith("Step") or
+                           clean_step[0] in "abcABC")):
+                        for j, char in enumerate(clean_step):
+                            if j > 0 and char in [".", ":", ")", "、", "．"] and clean_step[:j].strip().replace("Step", "").strip().isalnum():
+                                clean_step = clean_step[j+1:].strip()
+                                break
 
+                    processed_instructions.append(f"{i}. {clean_step}")
+            
             serving_size = None
             servings_info = recipe.get("servings", {})
             if 'value' in servings_info:
                 serving_size = f"{servings_info.get('value')} {servings_info.get('unit', '')}".strip()
             if serving_size is None:
                 serving_size = servings_info.get("raw_text", None)
+            mp4_url = None
+            poster_url=None
+            # nutrients=None
+            if recipe.get("source", None)=="delishkitchen":
+                #image for delishikitchen
+                try:
+                    poster_url = recipe.get("video_data",{}).get("poster_url")
+                except KeyError:
+                    poster_url = None
 
+                # video url extraction for mp4 video
+                sources = recipe.get("video_data", {}).get("sources", [])
+                
+                for source in sources:
+                    if source.get("type") == "video/mp4":
+                        mp4_url = source.get("url")
+                        break      
+                # nutrients=recipe.get("nutrients",None) 
+            else:
+                poster_url = recipe.get("image_url", None)
             result = {
                 "recipe_title": recipe.get("title", ""),
                 "cuisine_type": recipe.get("source", None),  
-                "prep_time": recipe.get("cooking_time", {}).get("value", None),
-                "cook_time": recipe.get("cooking_time", {}).get("value", None),
-                "total_time": recipe.get("cooking_time", {}).get("value", None),
+                "total_time": recipe.get("cooking_time",None),
                 "ingredients": "\n".join([ingredient['name'] for ingredient in recipe.get("ingredients", [])]),
-                "instructions": recipe.get("steps", []),
+                "instructions": processed_instructions,
                 "serving_size": serving_size,
-                "image_url": recipe.get("image_url", None),
+                "image_url":poster_url ,
+                "mp4_url":mp4_url,
+                "nutrients":recipe.get("nutrients",None) 
             }
-            
-            
-            if recipe.get("nutritional_info"):
-                result["nutritional_info"] = recipe.get("nutritional_info")
-            
+                    
             if recipe.get("difficulty_level"):
                 result["difficulty_level"] = recipe.get("difficulty_level")
-            
-            if recipe.get("storage_instructions"):
-                result["storage_instructions"] = recipe.get("storage_instructions")
             
             if recipe.get("extra_features"):
                 result["extra_features"] = recipe.get("extra_features")
