@@ -423,10 +423,6 @@ def get_recipe_suggestions(language):
         st.title("🛒 Product Finder for Ingredients")
         if st.button("Find Available Ingredients"):
             with st.spinner("Finding matching products... ⏳"):
-<<<<<<< Updated upstream
-                product_cart(st.session_state.recipe.ingredients, language)
-
-=======
                 st.session_state.available_ingredients = get_available_ingredients(
                     st.session_state.recipe.ingredients, language
                 )
@@ -470,4 +466,3 @@ def get_recipe_suggestions(language):
         # if st.button("Find Available Ingredients"):
         #     with st.spinner("Finding matching products... ⏳"):
         #         product_cart(st.session_state.recipe.ingredients, language)
->>>>>>> Stashed changes
