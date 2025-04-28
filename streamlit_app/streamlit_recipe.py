@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 import json
 import streamlit as st
@@ -355,29 +356,32 @@ def get_recipe_suggestions(language):
             #         st.video(mp4_video.get('url'))
 
             if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
-                # Only display if it's a valid URL
                 st.image(recipe.image_url, caption=recipe.recipe_title)
             elif recipe.image_url:
-                # If there's an image URL but it's not valid, just display a message
                 st.write("Image not available")
+            if recipe.mp4_url and recipe.mp4_url.startswith(('http://', 'https://')):
+                st.video(recipe.mp4_url)
+            else:
+                st.write("Video not available")
 
             info = {
                 "Recipe Title": recipe.recipe_title,
                 "Cuisine Type": recipe.cuisine_type,
-                "Preparation Time": recipe.prep_time,
-                "Cooking Time": recipe.cook_time,
                 "Total Time": recipe.total_time,
                 "Serving Size": recipe.serving_size,
                 "Difficulty Level": recipe.difficulty_level,
-                "Ingredients": recipe.ingredients,
             }
             for key, value in info.items():
                 st.subheader(f"**{key}:**")
                 st.write(value)
+            st.subheader("Ingredients:")
+            for i, value in enumerate(recipe.ingredients.split("\n"), start=1):
+                st.write(f"{i}. {value}")
 
-            st.subheader("Instructions")
+            st.subheader("Instructions:")
+            
             for step in recipe.instructions:
-                st.write(f"- {step}")
+                st.write(f"{step}")
 
             if recipe.extra_features:
                 st.subheader("Extra Features")
@@ -385,10 +389,28 @@ def get_recipe_suggestions(language):
                     st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
             st.subheader("Nutritional Info")
-            st.write(recipe.nutritional_info)
-
-            st.subheader("Storage Instructions")
-            st.write(recipe.storage_instructions)
+            if recipe.nutrients:
+                #Display nutritional information
+                df = pd.DataFrame(recipe.nutrients.items(), columns=["Nutrient", "Amount"])
+                df_no_index = df.reset_index(drop=True)
+                styled_df = df_no_index.style.set_table_styles(
+                    [{
+                        'selector': 'thead th',
+                        'props': [('background-color', '#f1f1f1'), ('color', 'black'), ('font-weight', 'bold')]
+                    }, {
+                        'selector': 'tbody td',
+                        'props': [('padding', '10px'), ('text-align', 'center')]
+                    }]
+                ).set_properties(**{
+                    'font-size': '14px',
+                    'font-family': 'Arial, sans-serif',
+                    'color': '#333333'
+                })
+                
+                
+                st.dataframe(styled_df)
+            else:
+                st.write("No nutritional info found!")
 
             st.session_state.recipe = recipe
             recipe_generated = True
@@ -403,3 +425,4 @@ def get_recipe_suggestions(language):
         if st.button("Find Available Ingredients"):
             with st.spinner("Finding matching products... ⏳"):
                 product_cart(st.session_state.recipe.ingredients, language)
+
