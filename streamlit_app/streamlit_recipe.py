@@ -9,6 +9,7 @@ from Agent.cart import add_item_to_cart, display_cart_summary
 from Agent.product import get_available_ingredients
 from Agent.recipe import clean_recipe_name, search_for_recipe_exact, stream_response_chunks
 from Agent.weather import get_cities_in_country, get_weather
+from streamlit_app.streamlit_product import product_cart
 
 def get_recipe_suggestions(language):
     # Preference Collection UI in Sidebar
@@ -401,41 +402,4 @@ def get_recipe_suggestions(language):
 
         if st.button("Find Available Ingredients"):
             with st.spinner("Finding matching products... ⏳"):
-                st.session_state.available_ingredients = get_available_ingredients(
-                    st.session_state.recipe.ingredients, language
-                )
-                st.session_state.search_done = True  # <-- Use session state instead of a local variable
-
-        # Show matching products if search was done
-        if st.session_state.search_done and not st.session_state.available_ingredients:
-            st.warning("⚠️ No matching product found.")
-        elif st.session_state.search_done:
-            st.subheader("Matching Products:")
-            product_list = st.session_state.available_ingredients
-
-            for i, product in enumerate(product_list):
-                st.subheader(f"{product['Product_name']}")
-                st.write(f"Price with Tax: {product['Tax']}")
-                st.write(f"Price: {product['Price']}")
-                st.write(f"Weight: {product['Weight']}")
-
-                quantity = st.number_input(
-                    f"Quantity for {product['Product_name']}",
-                    min_value=1, max_value=10, value=1, step=1, key=f"qty_{i}"
-                )
-
-                if st.button(f"Add to Cart", key=f"add_{i}"):
-                    # st.write('🛒 Button clicked for:', product["Product_name"])
-                    add_item_to_cart(product, quantity)
-                    st.session_state.last_added = product["Product_name"]
-                    # st.experimental_rerun()  # Force refresh to show cart update immediately
-
-        if st.session_state.last_added:
-            st.success(f"✅ {st.session_state.last_added} added to cart!")
-            st.session_state.last_added = None
-
-        if st.session_state.cart_items:
-            st.title("🧺 Your Cart:")
-            for item_line in display_cart_summary():
-                st.write(item_line)
-
+                product_cart(st.session_state.recipe.ingredients, language)
