@@ -16,19 +16,16 @@ def add_item_to_cart(product, quantity):
                      if item['Product_name'] == product["Product_name"]), None)
 
     price = parse_price(product["Price"])
-
     tax = product.get("Tax", "")
     price_with_tax = parse_price(tax)
 
     if existing:
-
         existing["Quantity"] += quantity
         existing["Price"] = price
         existing["Price_with_Tax"] = price_with_tax
         existing["Total_price"] = existing["Quantity"] * price
         existing["Total_Price_with_Tax"] = existing["Quantity"] * price_with_tax
     else:
-
         st.session_state.cart_items.append({
             "Product_name": product["Product_name"],
             "Price": price,
@@ -39,17 +36,33 @@ def add_item_to_cart(product, quantity):
             "Total_Price_with_Tax": price_with_tax * quantity
         })
 
-        
+
+def remove_item_from_cart(product_name):
+    existing = next((item for item in st.session_state.cart_items
+                     if item['Product_name'] == product_name), None)
+
+    if existing:
+        if existing["Quantity"] > 1:
+            existing["Quantity"] -= 1
+            existing["Total_price"] = existing["Quantity"] * existing["Price"]
+            existing["Total_Price_with_Tax"] = existing["Quantity"] * existing["Price_with_Tax"]
+            # st.session_state.success_message = f"One {product_name} has been removed from your cart."
+        else:
+            st.session_state.cart_items.remove(existing)
+            # st.session_state.success_message = f"{product_name} has been removed from your cart."
+        st.rerun()
+    else:
+        st.warning(f"{product_name} not found in your cart.")
+
+
 def display_cart_summary():
     total_base = 0
     total_with_tax = 0
     lines = []
 
     for item in st.session_state.cart_items:
-
         item_total_base = item['Total_price']
         item_total_with_tax = item['Total_Price_with_Tax']
-
 
         line = (
             f"{item['Quantity']} x {item['Product_name']}\n"
@@ -57,7 +70,6 @@ def display_cart_summary():
             f"Price with Tax: {item['Price_with_Tax']} 円"
         )
         lines.append(line)
-
 
         total_base += item_total_base
         total_with_tax += item_total_with_tax

@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 
-from Agent.cart import add_item_to_cart, display_cart_summary
+from Agent.cart import add_item_to_cart, display_cart_summary, remove_item_from_cart
 from Agent.product import get_available_ingredients
 
 
@@ -90,4 +90,7 @@ def get_product_suggestions(language):
         for item_line in display_cart_summary():
             st.write(item_line)
 
-
+    for item in st.session_state.cart_items:
+        if st.button(f'Remove one {item["Product_name"]} from cart'):
+            remove_item_from_cart(item["Product_name"])
+            break  

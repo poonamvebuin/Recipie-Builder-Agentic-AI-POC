@@ -6,7 +6,7 @@ from typing import Iterator
 from agno.agent import RunResponse
 import json
 import re
-from Agent.cart import add_item_to_cart, display_cart_summary
+from Agent.cart import add_item_to_cart, display_cart_summary, remove_item_from_cart
 from Agent.product import get_available_ingredients
 from Agent.recipe import clean_recipe_name, search_for_recipe_exact, stream_response_chunks
 from Agent.weather import get_cities_in_country, get_weather
@@ -461,8 +461,14 @@ def get_recipe_suggestions(language):
             for item_line in display_cart_summary():
                 st.write(item_line)
 
-
-
+        for item in st.session_state.cart_items:
+            if st.button(f'Remove one {item["Product_name"]} from cart'):
+                remove_item_from_cart(item["Product_name"])
+                break  
+        
+        if st.session_state.success_message:
+            st.success(st.session_state.success_message)
+            st.session_state.success_message = None
         # if st.button("Find Available Ingredients"):
         #     with st.spinner("Finding matching products... ⏳"):
         #         product_cart(st.session_state.recipe.ingredients, language)

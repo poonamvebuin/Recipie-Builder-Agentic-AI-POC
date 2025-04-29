@@ -54,8 +54,10 @@ if "is_japanese_request" not in st.session_state:
     st.session_state.is_japanese_request = False
 if "mode" not in st.session_state:
     st.session_state.mode = None
-
-
+if 'cart_updated' not in st.session_state:
+    st.session_state.cart_updated = False 
+if 'success_message' not in st.session_state:
+    st.session_state.success_message = None
 
 if st.session_state.mode == 'recipe':
     get_recipe_suggestions(language)
