@@ -37,6 +37,7 @@ def load_recipe_data(json_path="recipe_data/all_recipes.json"):
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
+        # print("DATA+++++",data)
         return data
     except Exception as e:
         print(f"Error loading recipe data: {e}")

@@ -1,3 +1,4 @@
+import pandas as pd
 import streamlit as st
 import json
 import streamlit as st
@@ -355,29 +356,32 @@ def get_recipe_suggestions(language):
             #         st.video(mp4_video.get('url'))
 
             if recipe.image_url and recipe.image_url.startswith(('http://', 'https://')):
-                # Only display if it's a valid URL
                 st.image(recipe.image_url, caption=recipe.recipe_title)
             elif recipe.image_url:
-                # If there's an image URL but it's not valid, just display a message
                 st.write("Image not available")
+            if recipe.mp4_url and recipe.mp4_url.startswith(('http://', 'https://')):
+                st.video(recipe.mp4_url)
+            else:
+                st.write("Video not available")
 
             info = {
                 "Recipe Title": recipe.recipe_title,
                 "Cuisine Type": recipe.cuisine_type,
-                "Preparation Time": recipe.prep_time,
-                "Cooking Time": recipe.cook_time,
                 "Total Time": recipe.total_time,
                 "Serving Size": recipe.serving_size,
                 "Difficulty Level": recipe.difficulty_level,
-                "Ingredients": recipe.ingredients,
             }
             for key, value in info.items():
                 st.subheader(f"**{key}:**")
                 st.write(value)
+            st.subheader("Ingredients:")
+            for i, value in enumerate(recipe.ingredients.split("\n"), start=1):
+                st.write(f"{i}. {value}")
 
-            st.subheader("Instructions")
+            st.subheader("Instructions:")
+            
             for step in recipe.instructions:
-                st.write(f"- {step}")
+                st.write(f"{step}")
 
             if recipe.extra_features:
                 st.subheader("Extra Features")
@@ -385,10 +389,28 @@ def get_recipe_suggestions(language):
                     st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
             st.subheader("Nutritional Info")
-            st.write(recipe.nutritional_info)
-
-            st.subheader("Storage Instructions")
-            st.write(recipe.storage_instructions)
+            if recipe.nutrients:
+                #Display nutritional information
+                df = pd.DataFrame(recipe.nutrients.items(), columns=["Nutrient", "Amount"])
+                df_no_index = df.reset_index(drop=True)
+                styled_df = df_no_index.style.set_table_styles(
+                    [{
+                        'selector': 'thead th',
+                        'props': [('background-color', '#f1f1f1'), ('color', 'black'), ('font-weight', 'bold')]
+                    }, {
+                        'selector': 'tbody td',
+                        'props': [('padding', '10px'), ('text-align', 'center')]
+                    }]
+                ).set_properties(**{
+                    'font-size': '14px',
+                    'font-family': 'Arial, sans-serif',
+                    'color': '#333333'
+                })
+                
+                
+                st.dataframe(styled_df)
+            else:
+                st.write("No nutritional info found!")
 
             st.session_state.recipe = recipe
             recipe_generated = True
@@ -399,7 +421,48 @@ def get_recipe_suggestions(language):
     # Ingredient Matching & Cart
     if recipe_generated:
         st.title("🛒 Product Finder for Ingredients")
-
         if st.button("Find Available Ingredients"):
             with st.spinner("Finding matching products... ⏳"):
-                product_cart(st.session_state.recipe.ingredients, language)
+                st.session_state.available_ingredients = get_available_ingredients(
+                    st.session_state.recipe.ingredients, language
+                )
+                st.session_state.search_done = True  # <-- Use session state instead of a local variable
+
+        # Show matching products if search was done
+        if st.session_state.search_done and not st.session_state.available_ingredients:
+            st.warning("⚠️ No matching product found.")
+        elif st.session_state.search_done:
+            st.subheader("Matching Products:")
+            product_list = st.session_state.available_ingredients
+
+            for i, product in enumerate(product_list):
+                st.subheader(f"{product['Product_name']}")
+                st.write(f"Price with Tax: {product['Tax']}")
+                st.write(f"Price: {product['Price']}")
+                st.write(f"Weight: {product['Weight']}")
+
+                quantity = st.number_input(
+                    f"Quantity for {product['Product_name']}",
+                    min_value=1, max_value=10, value=1, step=1, key=f"qty_{i}"
+                )
+
+                if st.button(f"Add to Cart", key=f"add_{i}"):
+                    # st.write('🛒 Button clicked for:', product["Product_name"])
+                    add_item_to_cart(product, quantity)
+                    st.session_state.last_added = product["Product_name"]
+                    # st.experimental_rerun()  # Force refresh to show cart update immediately
+
+        if st.session_state.last_added:
+            st.success(f"✅ {st.session_state.last_added} added to cart!")
+            st.session_state.last_added = None
+
+        if st.session_state.cart_items:
+            st.title("🧺 Your Cart:")
+            for item_line in display_cart_summary():
+                st.write(item_line)
+
+
+
+        # if st.button("Find Available Ingredients"):
+        #     with st.spinner("Finding matching products... ⏳"):
+        #         product_cart(st.session_state.recipe.ingredients, language)
