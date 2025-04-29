@@ -28,11 +28,11 @@ import uvicorn
 from mangum import Mangum
 from fastapi import FastAPI
 from inspect import getmembers, isclass
-import app.common.exception as exceptions
+import fastapi_app.common.exception as exceptions
 from contextlib import asynccontextmanager
-from app.models.connect_db import create_tables_on_startup
-from app.common.utils import exception_handler, custom_exception_handler
-from app.api import allergy
+from fastapi_app.models.connect_db import create_tables_on_startup
+from fastapi_app.common.utils import exception_handler, custom_exception_handler
+from fastapi_app.api import allergy
 # , raw_material, file, data_extraction, raw_material_allergy_mappings, raw_material_mappings
 
 @asynccontextmanager
