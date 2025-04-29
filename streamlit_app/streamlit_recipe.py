@@ -462,7 +462,7 @@ def get_recipe_suggestions(language):
                 st.write(item_line)
 
         for item in st.session_state.cart_items:
-            if st.button(f'Remove one {item["Product_name"]} from cart'):
+            if st.button(f'Remove {item["Product_name"]} from cart'):
                 remove_item_from_cart(item["Product_name"])
                 break  
         
