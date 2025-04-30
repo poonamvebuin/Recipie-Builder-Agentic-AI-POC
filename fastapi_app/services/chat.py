@@ -1,4 +1,5 @@
 import json
+from uuid import uuid4
 
 from agno.agent import Agent
 from agno.knowledge.json import JSONKnowledgeBase
@@ -9,6 +10,10 @@ from typing import Dict
 
 from agno.vectordb.pgvector import PgVector
 from dotenv import load_dotenv
+from agno.models.message import Message
+from agno.run.response import RunResponse, RunEvent
+from agno.memory.agent import AgentRun, AgentMemory
+from agno.memory.v2.memory import Memory
 
 load_dotenv()
 
@@ -105,7 +110,8 @@ def create_chat_agent(language: str) -> Agent:
         knowledge=knowledge_base,
         search_knowledge=True,
         read_chat_history=True,
-        system_message=f"""
+        storage=storage,
+        introduction=f"""
         You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
 
         IMPORTANT: 
@@ -168,33 +174,48 @@ def create_chat_agent(language: str) -> Agent:
         show_tool_calls=True
     )
     
-    # Initialize the agent with appropriate language settings
-    # system_message = """
-    # You are a helpful cooking assistant that helps users find recipes and cooking products.
-    # You can assist with:
-    # 1. Recipe Creation - Help users find recipes based on their preferences
-    # 2. Product Finder - Help users find cooking products they need
-    
-    # Always be friendly, supportive and enthusiastic about cooking.
-    # """
-    
-    # agent = Agent(
-    #     name="Cooking Assistant",
-    #     model=OpenAIChat(id="gpt-4o-mini"),
-    #     system_message=system_message,
-    #     storage=storage,
-    #     markdown=True,
-    #     add_datetime_to_instructions=True,
-    #     show_tool_calls=True,
-    #     read_chat_history=True,
-    #     extra_data={"language": language}
-    # )
-    
     # Create a new session
-    agent.new_session()
-    
-    # Add introduction message based on language
+    agent.agent_session = None
+    if agent.model is not None:
+        agent.model.clear()
+    if agent.memory is None:
+        agent.initialize_agent()
+    agent.session_id = str(uuid4())
+
+    # Add the welcome message as the first assistant message in history
     welcome_msg = get_welcome_message(language)["message"]
-    agent.add_introduction(welcome_msg)
-    print(welcome_msg)
+    welcome_message_obj = Message(
+        role=agent.model.assistant_message_role if agent.model else "assistant",
+        content=welcome_msg
+    )
+    # Add to memory as a run (so it appears in history)
+    if isinstance(agent.memory, AgentMemory):
+        agent.memory.add_run(
+            AgentRun(
+                response=RunResponse(
+                    content=welcome_msg,
+                    session_id=agent.session_id,
+                    agent_id=agent.agent_id,
+                    event=RunEvent.run_response,
+                    messages=[welcome_message_obj]
+                ),
+                message=welcome_message_obj
+            )
+        )
+    elif isinstance(agent.memory, Memory):
+        agent.memory.add_run(
+            session_id=agent.session_id,
+            run=RunResponse(
+                content=welcome_msg,
+                session_id=agent.session_id,
+                agent_id=agent.agent_id,
+                event=RunEvent.run_response,
+                messages=[welcome_message_obj]
+            )
+        )
+    else:
+        raise Exception("Unknown memory type for agent")
+
+    # Persist the session with the welcome message in history
+    agent.write_to_storage(session_id=agent.session_id)
     return agent
