@@ -1,7 +1,8 @@
-from typing import Optional
-from pydantic import BaseModel
+
 from datetime import datetime
 from uuid import UUID
+from pydantic import BaseModel, Field
+from typing import List, Optional
 
 
 class AllergenBase(BaseModel):
@@ -90,3 +91,15 @@ class PredictAllergy(BaseModel):
 
     class Config:
         from_attributes = True
+
+class NewChatRequest(BaseModel):
+    language: str = Field(..., description="The language preference for the chat session")
+
+class ChatData(BaseModel):
+    message: str
+    options: List[str]
+    option_message: List[str]
+
+class NewChatResponse(BaseModel):
+    session_id: str
+    data: ChatData

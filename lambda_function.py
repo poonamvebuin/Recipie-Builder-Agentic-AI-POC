@@ -32,7 +32,7 @@ import fastapi_app.common.exception as exceptions
 from contextlib import asynccontextmanager
 from fastapi_app.models.connect_db import create_tables_on_startup
 from fastapi_app.common.utils import exception_handler, custom_exception_handler
-from fastapi_app.api import allergy
+from fastapi_app.api import chat
 # , raw_material, file, data_extraction, raw_material_allergy_mappings, raw_material_mappings
 
 @asynccontextmanager
@@ -70,7 +70,7 @@ def map_exception_handlers(app):
 
 app = FastAPI(lifespan=lifespan)
 prefix = "/" +os.environ.get("API_PREFIX", "Dev")
-app.include_router(allergy.router, prefix=prefix+"/allergy-detection/api/v1")
+app.include_router(chat.router, prefix=prefix+"/recipe-builder/api/v1")
 # app.include_router(raw_material.router, prefix=prefix+"/allergy-detection/api/v1")
 # app.include_router(file.router, prefix=prefix + "/allergy-detection/api/v1")
 # app.include_router(data_extraction.router, prefix=prefix+"/allergy-detection/api/v1")
@@ -106,7 +106,7 @@ def lambda_handler(event, context):
 
 if __name__ == "__main__":
     try:
-        uvicorn.run("lambda_function:app", host="localhost", port=8000, reload=True)
+        uvicorn.run("lambda_function:app", host="localhost", port=8080, reload=True)
     except Exception as e:
         print(f"Server exit with error: {e}")
  
