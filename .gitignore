@@ -2,7 +2,10 @@ venv/
 master/
 dist/
 env/
+fast_venv/
+extra/
 __pycache__/
+app/
 
 # Compiled Python bytecode
 *.py[cod]

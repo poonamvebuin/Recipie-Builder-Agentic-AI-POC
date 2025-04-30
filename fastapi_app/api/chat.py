@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from fastapi_app.models.connect_db import SessionLocal
-from fastapi_app.services.chat import create_chat_agent, get_welcome_message
+from fastapi_app.services.chat import RecipeChatAgent
 from fastapi_app.common.schema import NewChatRequest, NewChatResponse, ChatData
 
 router = APIRouter()
@@ -17,17 +17,13 @@ def get_db():
 @router.post("/new-chat", response_model=NewChatResponse)
 def create_new_chat(request: NewChatRequest, db: Session = Depends(get_db)):
     """
-    Create a new chat session based on language preference
+    Create a new chat session using RecipeChatAgent (class-based).
     """
-    # try:
-    # Create a new agent with the specified language
-    agent = create_chat_agent(request.language)
+    recipe_agent = RecipeChatAgent(language=request.language)
+    agent = recipe_agent.create_agent()
+    welcome_data = recipe_agent.get_welcome_message(request.language)
 
-    # Get welcome message in the selected language
-    welcome_data = get_welcome_message(request.language)
-    print(welcome_data)
-
-    # Create response
+    # Prepare response
     response = NewChatResponse(
         session_id=agent.session_id,
         data=ChatData(
@@ -38,7 +34,7 @@ def create_new_chat(request: NewChatRequest, db: Session = Depends(get_db)):
     )
 
     return response
-    
+
     # except Exception as e:
     #     # Log the error
     #     print(f"Error creating new chat: {str(e)}")
