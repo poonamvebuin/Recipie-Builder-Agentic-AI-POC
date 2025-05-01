@@ -86,7 +86,6 @@ def search_for_recipe_exact(title: str):
         if recipe.get('title', '').strip() == title.strip():
             raw_steps = recipe.get("steps", [])
             processed_instructions = []
-            
             if not raw_steps:
                 processed_instructions = []
             elif isinstance(raw_steps[0], dict):
@@ -98,6 +97,8 @@ def search_for_recipe_exact(title: str):
                 for i, step in enumerate(raw_steps, 1):
                     clean_step = step
                     jp_numbers = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧", "⑨", "⑩"]
+                    if step=="" or step=="\n":
+                        break
                     if any(clean_step.startswith(jp_num) for jp_num in jp_numbers):
                         for j, jp_num in enumerate(jp_numbers, 1):
                             if clean_step.startswith(jp_num):
@@ -113,7 +114,6 @@ def search_for_recipe_exact(title: str):
                                 break
 
                     processed_instructions.append(f"{i}. {clean_step}")
-            
             serving_size = None
             servings_info = recipe.get("servings", {})
             if 'value' in servings_info:
