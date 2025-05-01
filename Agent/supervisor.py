@@ -16,11 +16,12 @@ import re
 import json
 import streamlit as st
 
-db_host = st.secrets["host"]
-db_user = st.secrets["user"]
-db_password = st.secrets["password"]
-db_name = st.secrets["dbname"]
-port = st.secrets["port"]
+db_host = st.secrets["database"]["host"]
+db_user = st.secrets["database"]["user"]
+db_password = st.secrets["database"]["password"]
+db_name = st.secrets["database"]["dbname"]
+port = st.secrets["database"]["port"]
+
 
 load_dotenv()
 
