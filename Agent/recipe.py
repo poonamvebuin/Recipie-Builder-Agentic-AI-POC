@@ -11,12 +11,17 @@ import re
 import time
 from typing import Iterator
 from agno.agent import RunResponse
+import streamlit as st
+
+db_host = st.secrets["database"]["host"]
+db_user = st.secrets["database"]["user"]
+db_password = st.secrets["database"]["password"]
+db_name = st.secrets["database"]["dbname"]
+port = st.secrets["database"]["port"]
 
 load_dotenv()
 
-
-
-db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
+db_url = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{port}/{db_name}"
 
 
 # Define VideoSource and VideoData models if needed, omitted for brevity
@@ -201,13 +206,13 @@ def search_for_recipe_exact(title: str):
 
 
 def get_agent():
-    db_url = f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
-             f"{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
-    storage = PostgresStorage(
-        table_name="agent_sessions",
-        db_url=db_url,
-        auto_upgrade_schema=True
-    )
+    # db_url = f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@" \
+    #          f"{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
+    # storage = PostgresStorage(
+    #     table_name="agent_sessions",
+    #     db_url=db_url,
+    #     auto_upgrade_schema=True
+    # )
 
     agent = Agent(
         name="Recipe Agent",

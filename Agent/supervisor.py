@@ -14,11 +14,17 @@ from dotenv import load_dotenv
 from difflib import get_close_matches
 import re
 import json
+import streamlit as st
+
+db_host = st.secrets["database"]["host"]
+db_user = st.secrets["database"]["user"]
+db_password = st.secrets["database"]["password"]
+db_name = st.secrets["database"]["dbname"]
+port = st.secrets["database"]["port"]
 
 load_dotenv()
 
-db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
-
+db_url = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{port}/{db_name}"
 # Initialize knowledge base
 knowledge_base = JSONKnowledgeBase(
     path="recipe_data/all_recipes.json",

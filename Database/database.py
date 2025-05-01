@@ -1,14 +1,17 @@
 import os
 import psycopg2
 from dotenv import load_dotenv
+import streamlit as st
 
 load_dotenv()
 
-db_host = os.getenv("DB_HOST")
-db_user = os.getenv("DB_USER")
-db_password = os.getenv("DB_PASSWORD")
-db_name = os.getenv("DB_NAME")
-port = os.getenv("PORT")
+
+db_host = st.secrets["database"]["host"]
+db_user = st.secrets["database"]["user"]
+db_password = st.secrets["database"]["password"]
+db_name = st.secrets["database"]["dbname"]
+port = st.secrets["database"]["port"]
+
 
 def connect_to_postgres():
     try:
