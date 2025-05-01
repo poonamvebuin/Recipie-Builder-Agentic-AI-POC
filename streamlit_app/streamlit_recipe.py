@@ -135,12 +135,13 @@ def get_recipe_suggestions(language):
             Example correct format:
             Here are some recipe suggestions based on your preferences.
 
-            RECIPE SUGGESTIONS:
-            寿司 (Sushi)
-            天ぷら (Tempura)
-            ラーメン (Ramen)
-            うどん (Udon)
-            そば (Soba)
+            ! IMPORTANT:
+                RECIPE SUGGESTIONS:
+                寿司 (Sushi)
+                天ぷら (Tempura)
+                ラーメン (Ramen)
+                うどん (Udon)
+                そば (Soba)
             """
             prompt = f"{preferences_text} IMPORTANT: Generate response in {language}"
         else:
@@ -231,7 +232,14 @@ def get_recipe_suggestions(language):
                         2. Choose the top 1–2 dishes based on rating and user feedback.
                         3. In your response, show the dish name, rating, and quote several real comments from the list.
                         4. Then write: "RECIPE SUGGESTIONS:" and list ONLY those 1–2 dish names on separate lines.
-
+                        
+                        ! IMPORTANT:
+                            ALWAYS FOLLOW FORMAT:
+                            DO NOT BOLD THIS SECTION
+                            RECIPE SUGGESTIONS:
+                                Recommended Dish: [Japanese name] (English name)  
+                                Rating: ★★★★★ X.X (based on Y reviews)  
+                                What people say: “Sample user comment”
                         IMPORTANT:
                         - DO NOT make up new dishes or comments.
                         - DO NOT summarize vaguely — use real reviews.
