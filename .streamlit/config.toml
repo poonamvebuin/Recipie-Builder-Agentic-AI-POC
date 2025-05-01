@@ -1,4 +1,3 @@
-[database]
 host="localhost"  
 dbname="agno_db"
 user="postgres"  
