@@ -1,0 +1,11 @@
+openai==0.28.1
+fastapi==0.111.0
+SQLAlchemy==2.0.30
+psycopg2
+mangum
+pgvector
+boto3
+openai==1.76.0
+agno==1.4.1
+psycopg==3.2.6
+psycopg-binary==3.2.6
