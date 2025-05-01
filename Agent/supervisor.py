@@ -1,6 +1,7 @@
 # supervisor.py
 
 from agno.agent import Agent
+from agno.team.team import Team
 from pydantic import BaseModel
 from typing import Dict, List
 import json
@@ -10,6 +11,9 @@ from agno.models.openai import OpenAIChat
 from deep_translator import GoogleTranslator
 import os
 from dotenv import load_dotenv
+from difflib import get_close_matches
+import re
+import json
 
 load_dotenv()
 
@@ -66,71 +70,115 @@ recipe_titles = extract_recipe_titles(recipe_data)
 # Create a simple lookup set of just the Japanese titles for verification
 japanese_recipe_titles = {recipe.get('title', '') for recipe in recipe_data if recipe.get('title', '')}
 
+def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
+    all_recipes = recipe_data_override if recipe_data_override is not None else recipe_data
+
+    reviewed = []
+    all_dataset_titles = [doc.get("title", "") for doc in all_recipes if doc.get("title")]
+
+    for title in titles:
+        japanese_title = re.sub(r'^[-\s]*japanese_title\s*-\s*', '', title).replace('-', '').strip()
+        japanese_title = re.sub(r'\s*\(.*?\)', '', japanese_title).strip()
+
+        best_match = get_close_matches(japanese_title, all_dataset_titles, n=1, cutoff=0.6)
+        if not best_match:
+            continue
+
+        matched_title = best_match[0]
+        doc = next((d for d in all_recipes if d.get("title") == matched_title), None)
+        if not doc:
+            continue
+
+        data = doc
+
+        if data.get("rating") and data["rating"].get("average") is not None:
+            all_comments = []
+            if data.get("reviews") and data["reviews"].get("items"):
+                all_comments = [item.get("comment", "") for item in data["reviews"]["items"] if item.get("comment")]
+                print('-------------------all_comments', all_comments)
+            reviewed.append({
+                "title": title,
+                "japanese_name": data.get("title"),
+                "average_rating": data["rating"]["average"],
+                "total_reviews": data["rating"].get("count", 0),
+                "all_comments": all_comments
+            })
+
+    reviewed.sort(key=lambda r: r["average_rating"], reverse=True)
+    return reviewed[:2]
+
 def get_supervisor_agent():
     agent = Agent(
-        name="Supervisor",
+        name="SupervisorAgent",
         model=OpenAIChat(id="gpt-4o-mini"),
         knowledge=knowledge_base,
         search_knowledge=True,
         read_chat_history=True,
         system_message=f"""
-        You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
+                        You are a Japanese recipe expert. Your two main responsibilities are:
 
-        IMPORTANT: 
-        - Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
-        {', '.join(japanese_recipe_titles)}
-        - Formatted recipe titles with English translations (when available):
-        {recipe_titles}
-        - ALWAY SUGGEST 5 RECIPES
+                        1. Suggesting recipes from our official database.
+                        2. Providing reviews and user feedback for dishes already suggested.
 
-        STRICT RULES:
-        1. You must ONLY suggest recipes with titles that EXACTLY match those in our database list above
-        2. NEVER create new recipe names or modify existing ones
-        3. NEVER combine or reconstruct recipe names
-        4. If no exact matches are found for the user's query, say so clearly and suggest recipes that might be similar based on available options
+                        ---
+                        📌 RECIPE DATABASE RULES:
 
-        SEARCH PROCESS:
-        1. When a user asks for a recipe in English, first translate their query to Japanese
-        2. Break down the query into key ingredients or concepts (e.g., "mango" -> "マンゴー", "cherry blossom" -> "桜")
-        3. Search for exact recipe titles containing these translated terms
-        4. ONLY suggest recipes that appear EXACTLY in the provided list
+                        - ONLY suggest recipes from this exact list:
+                        {', '.join(japanese_recipe_titles)}
 
-        RESPONSE FORMAT:
-        1. A brief conversational response
-        2. Clearly state whether you found exact matches or not
-        3. In the "RECIPE SUGGESTIONS:" section, list only recipes that exactly match titles in our database
-        4. Format: [Japanese title] ([English translation]) - if English translation is available
-        5. If no exact matches are found, clearly state this and suggest closest alternatives from our actual recipe list
+                        - Titles may include English translations:
+                        {recipe_titles}
 
-        EXAMPLES:
+                        - NEVER invent, rename, or combine recipes.
+                        - ALWAYS suggest exactly 5 recipes when asked for recommendations.
 
-        User: "I want recipes with sakura (cherry blossom)"
-        Your process:
-        - Translate "sakura" to "桜" in Japanese
-        - Search for recipes with "桜" in the title
-        - If none found exactly, do NOT create fake recipe names
+                        ---
+                        📌 RESPONSE BEHAVIOR:
 
-        DO NOT respond like this (INCORRECT):
-        "Here are some sakura recipes:
-        RECIPE SUGGESTIONS:
-        - ひんやりさくらアイスクリーム (Chilled Sakura Ice Cream)
-        - さくらのクレープ (Sakura Crepe)
-        - 桜の咲く特製のサラダ (Special Sakura Salad)"
+                        ▶ If the user ASKS FOR RECIPES:
+                        - Translate keywords into Japanese if needed.
+                        - Search for EXACT matches in titles.
+                        - If no match, say so clearly and suggest 5 closest titles from the official list.
+                        - Format:
 
-        Instead, respond like this (CORRECT):
-        "I searched for cherry blossom (桜) recipes in our database. While we don't have recipes with exactly 'sakura' or '桜' in the title, here are some traditional Japanese desserts from our collection:
+                        RECIPE SUGGESTIONS:
+                        -  Recommended Dish: [Japanese title] (English translation)
+                        -  Recommended Dish: [Japanese title]
+                        - ...
 
-        RECIPE SUGGESTIONS:
-        - とろ〜りもちもち！みたらしだんご (Chewy Mitarashi Dango)
-        - 水信玄餅風和菓子 (Mizu Shingen Mochi Style Japanese Sweet)
+                        ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
+                        - ONLY use the 5 recipes you suggested previously.
+                        - DO NOT suggest new recipes.
+                        - From those 5, select 1-2 top-rated dishes from review data
+                        - IF REVIEW NOT GIVEN THEN NOT SUGGEST
 
-        Would you like me to recommend other traditional Japanese recipes instead?"
+                        - Include:
+                        - Japanese name (and English translation if available)
+                        - Average rating and total reviews
+                        - One user review
 
-        FINAL REMINDERS:
-        - The recipes MUST have EXACT titles as they appear in our database
-        - Do NOT invent or modify recipe names
-        - If no exact match exists, be honest and suggest alternatives from our actual recipe list
-        - Always verify that suggested recipes exist in our database before recommending them
+                        - Format:
+
+                        RECIPE SUGGESTIONS:
+                        DO NOT BOLD THIS SECTION
+                        ---
+                        Recommended Dish: [Japanese name] (English name)  
+                        Rating: ★★★★★ X.X (based on Y reviews)  
+                        What people say: “Sample user comment”
+                        ---
+
+                        ---
+                        📌 IMPORTANT:
+                        - NEVER mix recipe suggestions and reviews in the same response.
+                        - When reviewing, only analyze recipes that were part of the last recipe suggestion list.
+                        - Be honest if no review data is available for a dish.
+
+                        ---
+                        📌 FINAL NOTES:
+                        - Recipe suggestions must come ONLY from this list:
+                        {', '.join(japanese_recipe_titles)}
+
+                        - Review quotes must be taken from actual data
         """,
         markdown=True,
         show_tool_calls=True

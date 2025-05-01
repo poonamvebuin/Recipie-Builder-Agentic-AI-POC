@@ -9,6 +9,7 @@ import re
 from Agent.cart import add_item_to_cart, display_cart_summary, remove_item_from_cart
 from Agent.product import get_available_ingredients
 from Agent.recipe import clean_recipe_name, search_for_recipe_exact, stream_response_chunks
+from Agent.supervisor import get_suggested_titles_with_reviews
 from Agent.weather import get_cities_in_country, get_weather
 from streamlit_app.streamlit_product import product_cart
 
@@ -31,7 +32,7 @@ def get_recipe_suggestions(language):
             if city != "None":
                 # print('-------city', city)
                 weather_data = get_weather(city, country)
-                print('----------weather', weather_data)
+                # print('----------weather', weather_data)
                 if weather_data:
                     st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
                     # st.sidebar.write(f"💧 Humidity: {weather_data['humidity']}%")
@@ -82,6 +83,11 @@ def get_recipe_suggestions(language):
 
     # Chat Input
     if user_input := st.chat_input("Ask for a recipe suggestion..."):
+        is_review_request = any(
+            keyword in user_input.lower()
+            for keyword in ["what people like", "which one is best", "top rated", "reviews", "recommend best"]
+        )
+        print('----------is_review_request', is_review_request)
         # Store user's message
         st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
 
@@ -174,6 +180,64 @@ def get_recipe_suggestions(language):
                 {weather_data['description']}:
                     - If  weather data includes the word **rain**: suggest meal based on rain"""
             
+        if is_review_request and st.session_state.last_recipe_suggestions:
+            reviewed_data = get_suggested_titles_with_reviews(st.session_state.last_recipe_suggestions)
+            if not reviewed_data:
+                st.warning("❌ No review data available. Showing previous recipe suggestions again:")
+
+                if st.session_state.last_recipe_suggestions:
+                    repeat_response = "No review data available. Here are the previous suggestions again:\n\nRECIPE SUGGESTIONS:\n"
+                    repeat_response += "\n".join(st.session_state.last_recipe_suggestions)
+
+                    with st.chat_message("assistant"):
+                        st.markdown(repeat_response)
+
+                    st.session_state.supervisor_history.append({"role": "assistant", "content": repeat_response})
+
+                    # Show buttons for previous suggestions
+                    st.subheader("🍽️ Suggested Recipes:")
+                    for suggestion in st.session_state.last_recipe_suggestions:
+                        cleaned_name = clean_recipe_name(suggestion)
+                        if st.button(cleaned_name):
+                            st.session_state.final_dish_choice = re.sub(r'\s*\(.*?\)', '', cleaned_name).strip()
+                            st.session_state.ready_for_recipe = True
+                            st.rerun()
+                return
+            else:
+                reviewed_text = ""
+                for review in reviewed_data[:2]:
+                    reviewed_text += f"Dish: {review['japanese_name']}\n"
+                    reviewed_text += f"Rating: {review['average_rating']} (from {review['total_reviews']} reviews)\n"
+                    reviewed_text += "Comments:\n"
+
+                    comments = review.get("all_comments", [])
+                    for idx, comment in enumerate(comments):
+                        reviewed_text += f"{idx+1}. {comment}\n"
+
+                    reviewed_text += "---\n"
+
+                prompt += f"""
+                        The user asked: "{user_input}"
+
+                        You are an assistant helping the user decide which recipe is most liked **from a previous list**.
+
+                        DO NOT SUGGEST ANY NEW RECIPES. You must ONLY use the review data below.
+
+                        REVIEW DATA:
+                        {reviewed_text}
+
+                        TASK:
+                        1. Carefully read all listed reviews for each dish.
+                        2. Choose the top 1–2 dishes based on rating and user feedback.
+                        3. In your response, show the dish name, rating, and quote several real comments from the list.
+                        4. Then write: "RECIPE SUGGESTIONS:" and list ONLY those 1–2 dish names on separate lines.
+
+                        IMPORTANT:
+                        - DO NOT make up new dishes or comments.
+                        - DO NOT summarize vaguely — use real reviews.
+                        - Write in a friendly, natural tone in {language}.
+                    """
+
         msg = [{"role": "user", "content": prompt}]
 
         # Include conversation history for context if this isn't the first message
@@ -188,7 +252,7 @@ def get_recipe_suggestions(language):
             # Add current message
             context_messages.append({"role": "user", "content": prompt})
             msg = context_messages
-        print(msg)
+        # print(msg)
         # response_iterator = st.session_state.supervisor_agent.run(message=prompt, stream=True)
         response_iterator = st.session_state.supervisor_agent.run(messages=msg, stream=True)
         # print('------------msg', msg)
@@ -276,19 +340,32 @@ def get_recipe_suggestions(language):
                         dish_suggestions = [line.strip() for line in suggestion_section.splitlines() if line.strip()]
         # print('----dishhhhhhhhhhhhhh----', dish_suggestions)
         if dish_suggestions:
-            st.session_state.dish_suggestions = dish_suggestions
+            st.session_state.dish_suggestions = list(dict.fromkeys(dish_suggestions))
+            st.session_state.last_recipe_suggestions = st.session_state.dish_suggestions.copy()  # <-- ADD THIS
             st.session_state.final_dish_choice = None
             st.session_state.ready_for_recipe = False
 
 
-    # Show suggestion buttons
     if st.session_state.dish_suggestions:
         st.subheader("🍽️ Suggested Recipes:")
         for suggestion in st.session_state.dish_suggestions:
-            if st.button(suggestion):
-                st.session_state.final_dish_choice = suggestion
-                st.session_state.ready_for_recipe = True
-                st.rerun()
+            if suggestion.startswith("Recommended Dish:"):
+                match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
+                if match:
+                    dish_name = clean_recipe_name(match.group(1).strip())
+                    print('--------dish_name', dish_name)
+                    dish_name = re.sub(r'\s*\(.*?\)', '', dish_name).strip()
+                    if st.button(dish_name):
+                        st.session_state.final_dish_choice = dish_name
+                        st.session_state.ready_for_recipe = True
+                        st.rerun()
+            elif not suggestion.lower().startswith(("rating:", "what people say:")):
+                cleaned_name = clean_recipe_name(suggestion)
+                print('--------dish_name', cleaned_name)
+                if st.button(cleaned_name):
+                    st.session_state.final_dish_choice = cleaned_name
+                    st.session_state.ready_for_recipe = True
+                    st.rerun()
 
     # Generate recipe
     recipe_generated = False
@@ -462,7 +539,7 @@ def get_recipe_suggestions(language):
                 st.write(item_line)
 
         for item in st.session_state.cart_items:
-            if st.button(f'Remove one {item["Product_name"]} from cart'):
+            if st.button(f'Remove {item["Product_name"]} from cart'):
                 remove_item_from_cart(item["Product_name"])
                 break  
         
