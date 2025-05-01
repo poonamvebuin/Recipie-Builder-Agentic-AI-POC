@@ -7,6 +7,5 @@ PARAMETER_DATABASE_ENDPOINT = "DATABASE_ENDPOINT"
 SECRETS_MANAGER_DB_CREDENTIAL = "DATABASE_CREDENTIAL"
 
 # endpoints
-ALLERGY_DETECTION_FEEDBACK = "/allergy_detection_feedback"
-PREDICT_ALLERGY = "/predict_allergy"
-ALLERGY = "/allergy"
+NEW_CHAT="/new-chat"
+RECIPE_SUGGESSTION="/recipe-suggestions"

@@ -5,67 +5,83 @@ from deep_translator import GoogleTranslator
 from Database.database import search_products
 
 def clean_ingredient(ingredient):
-    cleaned = re.sub(r'【.*?】', '', ingredient) 
-    cleaned = re.sub(r'[-–—•\d/.]+[a-zA-Z]*|🌶|🌾|[^\w\s]', '', cleaned)  
-    cleaned = cleaned.strip()
+
+    inside_parentheses = re.findall(r'[（(](.*?)[）)]', ingredient)
+    components = []
+
+    for part in inside_parentheses:
+        split_parts = re.split(r'[・,、/]', part)
+        for sp in split_parts:
+            cleaned = re.sub(r'[-–—•\d/.]+[a-zA-Z]*|🌶|🌾|[^\w\sぁ-んァ-ン一-龯]', '', sp).strip()
+            if cleaned:
+                components.append(cleaned)
+
+    without_parens = re.sub(r'[（(].*?[）)]', '', ingredient)
+    cleaned_main = re.sub(r'[-–—•\d/.]+[a-zA-Z]*|🌶|🌾|[^\w\sぁ-んァ-ン一-龯]', '', without_parens).strip()
+    if cleaned_main:
+        components.append(cleaned_main)
 
     blacklist = {
-        "tablespoon", "teaspoon", "grams", "ml", "cup", "medium", "fresh", "frozen","【 A】", "tablespoons", "pieces", "mix"
-        "chopped", "for", "to", "taste", "or", "g", "serving", "leaves", "wedges", "finely", "paste", "powder"
+        "tablespoon", "teaspoon", "grams", "ml", "cup", "medium", "fresh", "frozen", "tablespoons", "pieces", "mix",
+        "chopped", "for", "to", "taste", "or", "g", "serving", "leaves", "wedges", "finely", "paste", "powder",
+        "薬味", "香味野菜"
     }
-    words = [w for w in cleaned.lower().split() if w not in blacklist]
-    return ' '.join(words).strip()
+
+    # Final filtered list
+    return [w.lower() for w in components if w.lower() not in blacklist and w]
+
 
 def find_similar_products(cleaned_ingredients, products_db, threshold=85):
+    # print("START:::::::::::::::")
     results = set()
     product_names = [product[0].lower() for product in products_db]
 
     for ingredient in cleaned_ingredients:
         best_match = process.extractOne(ingredient, product_names, scorer=fuzz.token_set_ratio)
-        print('-ingredient',ingredient,'----best_match', best_match)
+        # print('-ingredient',ingredient,'----best_match', best_match)
         if best_match and best_match[1] >= threshold:
             for product in products_db:
                 if best_match[0] == product[0].lower():
                     results.add(tuple(product))
     return list(results)
-
 def get_available_ingredients(recipe_ingredients, language):
     if isinstance(recipe_ingredients, list):
-        ingredient_list = [i.strip() for i in recipe_ingredients if i]
+        raw_ingredients = recipe_ingredients
     elif isinstance(recipe_ingredients, str):
-        ingredient_list = [i.strip() for i in recipe_ingredients.split(",") if i]
+        raw_ingredients = [i.strip() for i in recipe_ingredients.split('\n') if i.strip()]
     else:
-        ingredient_list = []
-    # print('---ingredient_list----', ingredient_list)
+        raw_ingredients = []
 
-    cleaned_ingredients = [clean_ingredient(i) for i in ingredient_list]
+    # print('---raw_ingredients----', raw_ingredients)
+    cleaned_ingredients = [
+    sub_ing
+    for i in raw_ingredients
+    for sub_ing in clean_ingredient(i)
+]
+    # cleaned_ingredients = [clean_ingredient(i) for i in raw_ingredients]
     # print('---cleaned_ingredients---', cleaned_ingredients)
-
-    if language.lower() != "Japanese":
+    if language.lower() != "japanese":
         try:
-            ingredient_list = [
-                GoogleTranslator(source='auto', target='ja').translate(i)
+            translated_ingredients = [
+                GoogleTranslator(source='en', target='ja').translate(i)
                 for i in cleaned_ingredients
             ]
-            # print('------translated-ingredient_list----', ingredient_list)
         except Exception as e:
             print("Translation failed:", e)
+            translated_ingredients = cleaned_ingredients
     else:
-        ingredient_list = cleaned_ingredients
+        translated_ingredients = cleaned_ingredients
 
+    # print('------translated_ingredient_list (to JP)----', translated_ingredients)
     products_db = search_products()
-    # print('----product_db', products_db)
     products_db = [list(p) for p in products_db]
-
-    matches = find_similar_products(ingredient_list, products_db)
+    matches = find_similar_products(translated_ingredients, products_db)
     # print('--------matches--------', matches)
-
-    # Translate product details if the language is not Japanese
     if language.lower() != "japanese":
         translated_matches = []
         for match in matches:
             translated_match = {
-                "Product_name": GoogleTranslator(source='auto', target='en').translate(match[0]),
+                "Product_name": GoogleTranslator(source='ja', target='en').translate(match[0]),
                 "Tax": match[1],
                 "Price": f"{match[2]}",
                 "Weight": f"{match[5]} {match[6]}"

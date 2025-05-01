@@ -329,6 +329,7 @@ def get_recipe_suggestions(language):
         cleaned_dish_name = re.sub(r'^\s*-*\s*', '', cleaned_dish_name)
         
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
+        raw_japanese_ingredients = recipe_from_json.get('ingredients', [])
         if recipe_from_json:
             prompt = (
                 f"Please translate the following recipe into {language}:\n\n"
@@ -424,7 +425,7 @@ def get_recipe_suggestions(language):
         if st.button("Find Available Ingredients"):
             with st.spinner("Finding matching products... ⏳"):
                 st.session_state.available_ingredients = get_available_ingredients(
-                    st.session_state.recipe.ingredients, language
+                    raw_japanese_ingredients, language
                 )
                 st.session_state.search_done = True  # <-- Use session state instead of a local variable
 
