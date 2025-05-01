@@ -22,8 +22,10 @@ if "recipe_agent" not in st.session_state:
     st.session_state.recipe_agent = get_agent()
 if "supervisor_agent" not in st.session_state:
     st.session_state.supervisor_agent = get_supervisor_agent()
-# if "weather_agent" not in st.session_state:
-#     st.session_state.weather_agent = get_weather_agent()
+# if "multi_agent_team" not in st.session_state:
+#     st.session_state.multi_agent_team = get_multi_agent_team()
+# if "review_agent" not in st.session_state:
+#     st.session_state.review_agent = get_review_agent()
 if "supervisor_history" not in st.session_state:
     st.session_state.supervisor_history = []
 if "final_dish_choice" not in st.session_state:
@@ -58,6 +60,10 @@ if 'cart_updated' not in st.session_state:
     st.session_state.cart_updated = False 
 if 'success_message' not in st.session_state:
     st.session_state.success_message = None
+if "last_recipe_suggestions" not in st.session_state:
+    st.session_state.last_recipe_suggestions = []
+if "recommended_dishes" not in st.session_state:
+    st.session_state.recommended_dishes = []
 
 if st.session_state.mode == 'recipe':
     get_recipe_suggestions(language)
