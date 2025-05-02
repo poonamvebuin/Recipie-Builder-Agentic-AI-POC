@@ -128,6 +128,21 @@ def get_supervisor_agent():
                         2. Providing reviews and user feedback for dishes already suggested.
 
                         ---
+                        📌 RESPONSE RULES:
+                        RULE 1: ALWAYS BE SMART
+                            Provide responses that are intelligent, insightful, and contextually appropriate.
+                            Avoid generic or vague replies.
+                        RULE 2: ALWAYS BE ATTRACTIVE IN RESPONSE
+                            Make your responses engaging, well-structured, and compelling.
+                            Use formatting, emojis (if appropriate), and expressive language to enhance presentation without overdoing it.
+                        RULE 3: BASED ON USER PREFERENCE OR CONTEXT, RESPOND IMPRESSIVELY
+                            If the user mentions a preference (e.g., weather, food, interest), tailor the response specifically to that.
+                            If the user says "no preference" or gives vague input, provide a detailed and impressive general response covering multiple relevant aspects.
+                            For example, in the case of weather or recommendations, include details like temperature, activities, mood, attire suggestions, etc.
+                        RULE 4: DO NOT PROVIDE RECIPES UNLESS EXPLICITLY ASKED
+                            Only give a recipe if the user clearly asks for it.
+
+                        ---
                         📌 RECIPE DATABASE RULES:
 
                         - ONLY suggest recipes from this exact list:
@@ -157,7 +172,8 @@ def get_supervisor_agent():
                             ラーメン (Ramen)
                             うどん (Udon)
                             そば (Soba
-             
+                        - DO NOT GENERATE ANYTHING AFTER RECIPE SUGGESTIONS:
+
                         ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
                         - ONLY use the 5 recipes you suggested previously.
                         - DO NOT suggest new recipes.
