@@ -102,7 +102,7 @@ def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
             all_comments = []
             if data.get("reviews") and data["reviews"].get("items"):
                 all_comments = [item.get("comment", "") for item in data["reviews"]["items"] if item.get("comment")]
-                print('-------------------all_comments', all_comments)
+                # print('-------------------all_comments', all_comments)
             reviewed.append({
                 "title": title,
                 "japanese_name": data.get("title"),
@@ -146,13 +146,18 @@ def get_supervisor_agent():
                         - Translate keywords into Japanese if needed.
                         - Search for EXACT matches in titles.
                         - If no match, say so clearly and suggest 5 closest titles from the official list.
-                        - Format:
 
-                        RECIPE SUGGESTIONS:
-                        -  Recommended Dish: [Japanese title] (English translation)
-                        -  Recommended Dish: [Japanese title]
-                        - ...
-
+                        IMPORTANT:
+                        - ALWAYS FOLLOW FORMAT:
+                            RECIPE SUGGESTIONS:
+                            -  Recommended Dish: [Japanese title] (English translation)
+                            EX:
+                            寿司 (Sushi)
+                            天ぷら (Tempura)
+                            ラーメン (Ramen)
+                            うどん (Udon)
+                            そば (Soba
+             
                         ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
                         - ONLY use the 5 recipes you suggested previously.
                         - DO NOT suggest new recipes.
@@ -164,15 +169,14 @@ def get_supervisor_agent():
                         - Average rating and total reviews
                         - One user review
 
-                        - Format:
+                        IMPORTANT:
+                        - ALWAYS FOLLOW FORMAT:
+                            DO NOT BOLD THIS SECTION
 
-                        RECIPE SUGGESTIONS:
-                        DO NOT BOLD THIS SECTION
-                        ---
-                        Recommended Dish: [Japanese name] (English name)  
-                        Rating: ★★★★★ X.X (based on Y reviews)  
-                        What people say: “Sample user comment”
-                        ---
+                            RECIPE SUGGESTIONS:
+                                Recommended Dish: [Japanese name] (English name)  
+                                Rating: ★★★★★ X.X (based on Y reviews)  
+                                What people say: “Sample user comment”
 
                         ---
                         📌 IMPORTANT:

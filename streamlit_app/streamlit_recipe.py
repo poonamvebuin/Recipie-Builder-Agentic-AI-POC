@@ -87,7 +87,7 @@ def get_recipe_suggestions(language):
             keyword in user_input.lower()
             for keyword in ["what people like", "which one is best", "top rated", "reviews", "recommend best"]
         )
-        print('----------is_review_request', is_review_request)
+        # print('----------is_review_request', is_review_request)
         # Store user's message
         st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
 
@@ -135,12 +135,13 @@ def get_recipe_suggestions(language):
             Example correct format:
             Here are some recipe suggestions based on your preferences.
 
-            RECIPE SUGGESTIONS:
-            寿司 (Sushi)
-            天ぷら (Tempura)
-            ラーメン (Ramen)
-            うどん (Udon)
-            そば (Soba)
+            ! IMPORTANT:
+                RECIPE SUGGESTIONS:
+                寿司 (Sushi)
+                天ぷら (Tempura)
+                ラーメン (Ramen)
+                うどん (Udon)
+                そば (Soba)
             """
             prompt = f"{preferences_text} IMPORTANT: Generate response in {language}"
         else:
@@ -231,7 +232,14 @@ def get_recipe_suggestions(language):
                         2. Choose the top 1–2 dishes based on rating and user feedback.
                         3. In your response, show the dish name, rating, and quote several real comments from the list.
                         4. Then write: "RECIPE SUGGESTIONS:" and list ONLY those 1–2 dish names on separate lines.
-
+                        
+                        ! IMPORTANT:
+                            ALWAYS FOLLOW FORMAT:
+                            DO NOT BOLD THIS SECTION
+                            RECIPE SUGGESTIONS:
+                                Recommended Dish: [Japanese name] (English name)  
+                                Rating: ★★★★★ X.X (based on Y reviews)  
+                                What people say: “Sample user comment”
                         IMPORTANT:
                         - DO NOT make up new dishes or comments.
                         - DO NOT summarize vaguely — use real reviews.
@@ -306,7 +314,7 @@ def get_recipe_suggestions(language):
 
             # For Japanese requests, verify that suggestions have Japanese characters
             if st.session_state.is_japanese_request and dish_suggestions:
-                print('--------dish_suggestions', dish_suggestions)
+                # print('--------dish_suggestions', dish_suggestions)
                 has_japanese_chars = False
                 for suggestion in dish_suggestions:
                     # Check if any suggestion contains Japanese characters
@@ -353,7 +361,7 @@ def get_recipe_suggestions(language):
                 match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
                 if match:
                     dish_name = clean_recipe_name(match.group(1).strip())
-                    print('--------dish_name', dish_name)
+                    # print('--------dish_name', dish_name)
                     dish_name = re.sub(r'\s*\(.*?\)', '', dish_name).strip()
                     if st.button(dish_name):
                         st.session_state.final_dish_choice = dish_name
@@ -361,7 +369,7 @@ def get_recipe_suggestions(language):
                         st.rerun()
             elif not suggestion.lower().startswith(("rating:", "what people say:")):
                 cleaned_name = clean_recipe_name(suggestion)
-                print('--------dish_name', cleaned_name)
+                # print('--------dish_name', cleaned_name)
                 if st.button(cleaned_name):
                     st.session_state.final_dish_choice = cleaned_name
                     st.session_state.ready_for_recipe = True
