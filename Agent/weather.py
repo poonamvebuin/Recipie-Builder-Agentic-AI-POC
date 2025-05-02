@@ -64,7 +64,7 @@ def get_cities_in_country(country_name: str):
 def get_weather(city: str, country='JP'):
     url = f"{BASE_URL}?q={city},{country}&appid={API_KEY}&units=metric"
     response = requests.get(url)
-    print('-----------response', response.text, response.status_code)
+    # print('-----------response', response.text, response.status_code)
     if response.status_code == 200:
         data = response.json()
         weather = {

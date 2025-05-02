@@ -87,7 +87,7 @@ def get_recipe_suggestions(language):
             keyword in user_input.lower()
             for keyword in ["what people like", "which one is best", "top rated", "reviews", "recommend best"]
         )
-        print('----------is_review_request', is_review_request)
+        # print('----------is_review_request', is_review_request)
         # Store user's message
         st.session_state.supervisor_history.append({"role": "user", "content": user_input, "language": language})
 
@@ -314,7 +314,7 @@ def get_recipe_suggestions(language):
 
             # For Japanese requests, verify that suggestions have Japanese characters
             if st.session_state.is_japanese_request and dish_suggestions:
-                print('--------dish_suggestions', dish_suggestions)
+                # print('--------dish_suggestions', dish_suggestions)
                 has_japanese_chars = False
                 for suggestion in dish_suggestions:
                     # Check if any suggestion contains Japanese characters
@@ -361,7 +361,7 @@ def get_recipe_suggestions(language):
                 match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
                 if match:
                     dish_name = clean_recipe_name(match.group(1).strip())
-                    print('--------dish_name', dish_name)
+                    # print('--------dish_name', dish_name)
                     dish_name = re.sub(r'\s*\(.*?\)', '', dish_name).strip()
                     if st.button(dish_name):
                         st.session_state.final_dish_choice = dish_name
@@ -369,7 +369,7 @@ def get_recipe_suggestions(language):
                         st.rerun()
             elif not suggestion.lower().startswith(("rating:", "what people say:")):
                 cleaned_name = clean_recipe_name(suggestion)
-                print('--------dish_name', cleaned_name)
+                # print('--------dish_name', cleaned_name)
                 if st.button(cleaned_name):
                     st.session_state.final_dish_choice = cleaned_name
                     st.session_state.ready_for_recipe = True

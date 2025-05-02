@@ -2,9 +2,11 @@ import streamlit as st
 import pandas as pd
 from Agent.recipe import get_agent
 from Agent.supervisor import get_supervisor_agent
+from Database.database import save_conversation_to_postgres
 from streamlit_app.streamlit_welcom import display_welcome_message
 from streamlit_app.streamlit_product import get_product_suggestions
 from streamlit_app.streamlit_recipe import get_recipe_suggestions
+import json
 
 # Streamlit Config
 st.set_page_config(page_title="Recipe Builder", layout="centered")
@@ -17,7 +19,10 @@ language = st.sidebar.selectbox("Choose your preferred language:", language_opti
 
 display_welcome_message(language)
 
-# Session State Initialization
+import uuid
+
+if "session_id" not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4()) 
 if "recipe_agent" not in st.session_state:
     st.session_state.recipe_agent = get_agent()
 if "supervisor_agent" not in st.session_state:
@@ -70,4 +75,12 @@ if st.session_state.mode == 'recipe':
 
 if st.session_state.mode == 'product':
     get_product_suggestions(language)
-    
+
+if st.session_state.supervisor_history or st.session_state.final_dish_choice:
+    session_id = st.session_state.get("session_id")
+    chat_history = json.dumps(st.session_state.get('supervisor_history', []))
+    preferences = json.dumps(st.session_state.get('preferences', {}))
+    cart = json.dumps(st.session_state.get('cart_items', []))
+    product = st.session_state.get('available_ingredients', '')
+    recipe_choice = st.session_state.get('final_dish_choice', '')
+    save_conversation_to_postgres(session_id, chat_history, preferences, cart, product, recipe_choice)
