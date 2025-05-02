@@ -165,7 +165,9 @@ def get_recipe_suggestions(language):
             prompt += f"""
             IMPORTANT FORMATTING RULES: 
             - Generate response in {language}
-            - alway give msg like this when no preference: give msg like i search for prefrnce but no prefrence so i will suggest some recipes
+            - alway give msg like this:
+                - if they give prefrence in input then take care of it. and give msg like based on your prefrence i will suggest some dishes.
+                - when no preference: give msg like i search for prefrnce but no prefrence so i will suggest some recipes 
             - Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
             - List each recipe on a new line
             - For Japanese recipes, use format: "寿司 (Sushi)" - Japanese name first, then English in parentheses

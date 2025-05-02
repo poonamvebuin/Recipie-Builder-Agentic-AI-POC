@@ -1,12 +1,14 @@
 import streamlit as st
 import pandas as pd
+import uuid
+import json
+
 from Agent.recipe import get_agent
 from Agent.supervisor import get_supervisor_agent
 from Database.database import save_conversation_to_postgres
 from streamlit_app.streamlit_welcom import display_welcome_message
 from streamlit_app.streamlit_product import get_product_suggestions
 from streamlit_app.streamlit_recipe import get_recipe_suggestions
-import json
 
 # Streamlit Config
 st.set_page_config(page_title="Recipe Builder", layout="centered")
@@ -16,66 +18,84 @@ st.sidebar.header("🌐 Language Preferences")
 language_options = ["English", "Japanese"]
 language = st.sidebar.selectbox("Choose your preferred language:", language_options, index=0)
 
-
 display_welcome_message(language)
 
-import uuid
-
+# Initialize essential session state
 if "session_id" not in st.session_state:
-    st.session_state.session_id = str(uuid.uuid4()) 
+    st.session_state.session_id = str(uuid.uuid4())
 if "recipe_agent" not in st.session_state:
     st.session_state.recipe_agent = get_agent()
 if "supervisor_agent" not in st.session_state:
     st.session_state.supervisor_agent = get_supervisor_agent()
-# if "multi_agent_team" not in st.session_state:
-#     st.session_state.multi_agent_team = get_multi_agent_team()
-# if "review_agent" not in st.session_state:
-#     st.session_state.review_agent = get_review_agent()
-if "supervisor_history" not in st.session_state:
-    st.session_state.supervisor_history = []
-if "final_dish_choice" not in st.session_state:
-    st.session_state.final_dish_choice = None
-if "ready_for_recipe" not in st.session_state:
-    st.session_state.ready_for_recipe = False
-if "cart_items" not in st.session_state:
-    st.session_state.cart_items = []
-if "available_ingredients" not in st.session_state:
-    st.session_state.available_ingredients = []
-if "last_added" not in st.session_state:
-    st.session_state.last_added = None
-if "dish_suggestions" not in st.session_state:
-    st.session_state.dish_suggestions = []
-if "search_done" not in st.session_state:
-    st.session_state.search_done = False
-if "preferences" not in st.session_state:
-    st.session_state.preferences = {
+
+# Initialize all other default session keys
+defaults = {
+    "supervisor_history": [],
+    "final_dish_choice": None,
+    "ready_for_recipe": False,
+    "cart_items": [],
+    "available_ingredients": [],
+    "last_added": None,
+    "dish_suggestions": [],
+    "search_done": False,
+    "preferences": {
         "taste": None,
         "cooking_time": None,
         "ingredients": [],
         "allergies": [],
         "diet": None
-    }
-if "preferences_collected" not in st.session_state:
-    st.session_state.preferences_collected = False
-if "is_japanese_request" not in st.session_state:
-    st.session_state.is_japanese_request = False
-if "mode" not in st.session_state:
-    st.session_state.mode = None
-if 'cart_updated' not in st.session_state:
-    st.session_state.cart_updated = False 
-if 'success_message' not in st.session_state:
-    st.session_state.success_message = None
-if "last_recipe_suggestions" not in st.session_state:
-    st.session_state.last_recipe_suggestions = []
-if "recommended_dishes" not in st.session_state:
-    st.session_state.recommended_dishes = []
+    },
+    "preferences_collected": False,
+    "is_japanese_request": False,
+    "mode": None,
+    "previous_mode": None,
+    "cart_updated": False,
+    "success_message": None,
+    "last_recipe_suggestions": [],
+    "recommended_dishes": [],
+    "recipe": None
+}
 
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+# --- RESET ON MODE SWITCH ---
+if st.session_state.mode != st.session_state.previous_mode:
+    # Reset shared product/ingredient state
+    st.session_state.available_ingredients = []
+    st.session_state.search_done = False
+    st.session_state.cart_items = []
+    st.session_state.last_added = None
+    st.session_state.cart_updated = False
+    st.session_state.success_message = None
+
+    if st.session_state.previous_mode == "recipe":
+        # Clear recipe-specific state
+        st.session_state.supervisor_history = []
+        st.session_state.final_dish_choice = None
+        st.session_state.ready_for_recipe = False
+        st.session_state.dish_suggestions = []
+        st.session_state.last_recipe_suggestions = []
+        st.session_state.preferences_collected = False
+        st.session_state.recommended_dishes = []
+        st.session_state.recipe = None
+
+    elif st.session_state.previous_mode == "product":
+        # No additional state needed
+        pass
+
+    # Update previous mode
+    st.session_state.previous_mode = st.session_state.mode
+
+# --- MAIN MODE HANDLING ---
 if st.session_state.mode == 'recipe':
     get_recipe_suggestions(language)
 
-if st.session_state.mode == 'product':
+elif st.session_state.mode == 'product':
     get_product_suggestions(language)
 
+# --- SAVE TO DATABASE IF NEEDED ---
 if st.session_state.supervisor_history or st.session_state.final_dish_choice:
     session_id = st.session_state.get("session_id")
     chat_history = json.dumps(st.session_state.get('supervisor_history', []))
