@@ -103,3 +103,34 @@ class ChatData(BaseModel):
 class NewChatResponse(BaseModel):
     session_id: str
     data: ChatData
+
+
+class Preferences(BaseModel):
+    taste: Optional[str]
+    cooking_time: Optional[str]
+    ingredients: List[str]
+    allergy_or_ingredient_to_avoid: List[str]
+    dietry: Optional[str]
+
+
+class Data(BaseModel):
+    prompt: str
+    preferences: Preferences
+
+
+class SupervisorRequest(BaseModel):
+    language: str
+    session_id: Optional[str] = ""
+    data: Data
+
+
+class SupervisorResponseData(BaseModel):
+    response: str
+    suggestions: List[str]
+
+
+class SupervisorResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    data: SupervisorResponseData
