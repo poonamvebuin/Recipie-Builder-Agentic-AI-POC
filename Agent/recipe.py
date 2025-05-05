@@ -3,23 +3,21 @@ import os
 import re
 import time
 from textwrap import dedent
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Dict, Iterator, List, Optional
 
 import streamlit as st
 from agno.agent import Agent, RunResponse
 from agno.models.openai import OpenAIChat
-from agno.storage.postgres import PostgresStorage
 from dotenv import load_dotenv
-from pydantic import BaseModel, ConfigDict
-
-db_host = st.secrets["database"]["host"]
-db_user = st.secrets["database"]["user"]
-db_password = st.secrets["database"]["password"]
-db_name = st.secrets["database"]["dbname"]
-port = st.secrets["database"]["port"]
-
+from pydantic import BaseModel
 
 load_dotenv()
+
+db_host = os.getenv("DB_HOST")
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_name = os.getenv("DB_NAME")
+port = int(os.getenv("DB_PORT", 5432))
 
 db_url = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{port}/{db_name}"
 
@@ -196,16 +194,15 @@ def search_for_recipe_exact(title: str):
                         break
             else:
                 poster_url = recipe.get("image_url", None)
-            nutrient_info=None
-            if recipe.get('nutrients'):
+            nutrient_info = None
+            if recipe.get("nutrients"):
                 nutrient_info = []
-                nutrients_raw = recipe.get('nutrients', {})
+                nutrients_raw = recipe.get("nutrients", {})
                 if nutrients_raw:
                     for name, data in nutrients_raw.items():
-                        nutrient_info.append({
-                            name: str(data['value']) + str(data['unit'])
-                        })
-            
+                        nutrient_info.append(
+                            {name: str(data["value"]) + str(data["unit"])}
+                        )
 
             result = {
                 "recipe_title": recipe.get("title", ""),

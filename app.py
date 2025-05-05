@@ -46,7 +46,7 @@ defaults = {
         "cooking_time": None,
         "ingredients": [],
         "allergies": [],
-        "diet": None
+        "diet": None,
     },
     "preferences_collected": False,
     "is_japanese_request": False,
@@ -56,7 +56,7 @@ defaults = {
     "success_message": None,
     "last_recipe_suggestions": [],
     "recommended_dishes": [],
-    "recipe": None
+    "recipe": None,
 }
 
 for key, value in defaults.items():
@@ -92,10 +92,10 @@ if st.session_state.mode != st.session_state.previous_mode:
     st.session_state.previous_mode = st.session_state.mode
 
 # --- MAIN MODE HANDLING ---
-if st.session_state.mode == 'recipe':
+if st.session_state.mode == "recipe":
     get_recipe_suggestions(language)
 
-elif st.session_state.mode == 'product':
+elif st.session_state.mode == "product":
     get_product_suggestions(language)
 
 # --- SAVE TO DATABASE IF NEEDED ---
