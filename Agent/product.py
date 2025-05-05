@@ -101,12 +101,12 @@ def get_available_ingredients(recipe_ingredients, language):
     """
 
     if isinstance(recipe_ingredients, list):
-        raw_ingredients = recipe_ingredients
+        cleaned_ingredients = re.sub(r'\n+', '\n', recipe_ingredients)
+        raw_ingredients = [i.strip() for i in cleaned_ingredients.split('\n') if i.strip()]
     elif isinstance(recipe_ingredients, str):
 
         cleaned_ingredients = re.sub(r'\n+', '\n', recipe_ingredients)
         raw_ingredients = [i.strip() for i in cleaned_ingredients.split('\n') if i.strip()]
-
     else:
         raw_ingredients = []
 
