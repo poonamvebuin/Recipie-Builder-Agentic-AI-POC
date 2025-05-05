@@ -2,26 +2,22 @@ import json
 import os
 import re
 from difflib import get_close_matches
-from typing import Dict, List
+from typing import List
 
-import streamlit as st
 from agno.agent import Agent
 from agno.knowledge.json import JSONKnowledgeBase
 from agno.models.openai import OpenAIChat
-from agno.team.team import Team
 from agno.vectordb.pgvector import PgVector
-from deep_translator import GoogleTranslator
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-db_host = st.secrets["database"]["host"]
-db_user = st.secrets["database"]["user"]
-db_password = st.secrets["database"]["password"]
-db_name = st.secrets["database"]["dbname"]
-port = st.secrets["database"]["port"]
-
-
 load_dotenv()
+
+db_host = os.getenv("DB_HOST")
+db_user = os.getenv("DB_USER")
+db_password = os.getenv("DB_PASSWORD")
+db_name = os.getenv("DB_NAME")
+port = int(os.getenv("DB_PORT", 5432))
 
 db_url = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{port}/{db_name}"
 # Initialize knowledge base
@@ -40,12 +36,12 @@ class SupervisorResponse(BaseModel):
 
 def load_recipe_data(json_path="recipe_data/all_recipes.json"):
     """Load recipe data from a JSON file.
-    
+
     This function reads a JSON file containing recipe data and returns the parsed data as a Python object. If an error occurs during the loading process, an error message is printed, and an empty list is returned.
-    
+
     Args:
         json_path (str): The path to the JSON file containing the recipe data. Defaults to "recipe_data/all_recipes.json".
-    
+
     Returns:
         list: A list of recipes parsed from the JSON file. If an error occurs, an empty list is returned.
     """
@@ -62,12 +58,12 @@ def load_recipe_data(json_path="recipe_data/all_recipes.json"):
 
 def extract_recipe_titles(recipe_data):
     """Extracts recipe titles from a list of recipe data, including optional English translations.
-    
+
     Args:
         recipe_data (list of dict): A list of dictionaries, where each dictionary contains
             recipe information. Each dictionary is expected to have a 'title' key for the
             Japanese title and an 'english_name' key for the English translation.
-    
+
     Returns:
         list: A list of formatted recipe titles. Each title is in the format "Japanese Title (English Name)"
               if an English name is provided; otherwise, it only includes the Japanese title.
@@ -102,21 +98,21 @@ japanese_recipe_titles = {
 
 def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
     """Get suggested titles with reviews based on provided titles.
-    
-    This function takes a list of titles and returns a list of suggested titles 
-    with their corresponding reviews and ratings. It matches the provided titles 
-    against a dataset of recipes, either from a default dataset or an optional 
-    override dataset. The function extracts relevant information such as average 
+
+    This function takes a list of titles and returns a list of suggested titles
+    with their corresponding reviews and ratings. It matches the provided titles
+    against a dataset of recipes, either from a default dataset or an optional
+    override dataset. The function extracts relevant information such as average
     ratings, total review counts, and comments for the best matching titles.
-    
+
     Args:
         titles (list of str): A list of titles to match against the recipe dataset.
-        recipe_data_override (list of dict, optional): An optional list of recipe 
-            data to override the default dataset. Each recipe should be a dictionary 
+        recipe_data_override (list of dict, optional): An optional list of recipe
+            data to override the default dataset. Each recipe should be a dictionary
             containing at least a "title", "rating", and "reviews".
-    
+
     Returns:
-        list of dict: A list of dictionaries containing the top two suggested titles 
+        list of dict: A list of dictionaries containing the top two suggested titles
             with their reviews. Each dictionary includes the following keys:
             - title (str): The original title provided.
             - japanese_name (str): The matched title from the dataset.
@@ -178,12 +174,12 @@ def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
 
 def get_supervisor_agent():
     """Get a configured SupervisorAgent for handling Japanese recipe inquiries.
-    
+
     This function creates and returns an instance of the SupervisorAgent, which is designed to suggest recipes and provide reviews based on user requests. The agent is equipped with a specific system message that outlines its responsibilities, response rules, and behavior guidelines.
-    
+
     Returns:
         Agent: An instance of the SupervisorAgent configured with a knowledge base, response rules, and a system message tailored for Japanese recipe expertise.
-    
+
     Raises:
         None: This function does not raise any exceptions.
     """

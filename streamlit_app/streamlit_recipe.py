@@ -6,112 +6,201 @@ import pandas as pd
 import streamlit as st
 from agno.agent import RunResponse
 
-from Agent.cart import (add_item_to_cart, display_cart_summary,
-                        remove_item_from_cart)
 from Agent.product import get_available_ingredients
-from Agent.recipe import (clean_recipe_name, search_for_recipe_exact,
-                          stream_response_chunks)
+from Agent.recipe import (
+    clean_recipe_name,
+    search_for_recipe_exact,
+    stream_response_chunks,
+)
 from Agent.supervisor import get_suggested_titles_with_reviews
 from Agent.weather import get_cities_in_country, get_weather
-from streamlit_app.streamlit_product import product_cart
+from streamlit_app.ui_helpers import render_cart, render_matching_products
 
 
-def get_recipe_suggestions(language):
-    """Get recipe suggestions based on user preferences and location.
-    
-    Args:
-        language (str): The language in which the recipe suggestions should be provided.
-    
-    This function interacts with the user through a Streamlit interface, allowing them to select their country, city, and preferences for taste, cooking time, ingredients, allergies, and dietary restrictions. It retrieves weather data based on the selected location and uses this information, along with user preferences, to generate tailored recipe suggestions. The function also handles user input for recipe requests, displays previous suggestions, and allows users to edit their preferences. Finally, it provides options for finding available ingredients and managing a shopping cart for selected products.
+# --- UI MODULES ---
+def render_location_and_weather_ui():
+    """Render the location and weather user interface in the sidebar.
+
+    This function creates a sidebar in a Streamlit application where users can select their country and city to retrieve weather information. It displays the temperature and weather description for the selected city if available.
+
+    Returns:
+        tuple: A tuple containing:
+            - country (str): The selected country.
+            - city (str or None): The selected city, or None if no city is selected.
+            - weather_data (dict or None): A dictionary containing weather data, or None if no weather data is available.
     """
 
-    # Preference Collection UI in Sidebar
-    st.title("🧑‍🍳 Chat with Recipe Assistant")
-
     st.sidebar.header("📍 Your Location")
-
-    # Input for country
-    countries_options = ["None", "India", "Japan"]
-    country = st.sidebar.selectbox("Enter your country:", countries_options, index=0)
-
-    city = None
-    weather_data = None
+    country = st.sidebar.selectbox(
+        "Enter your country:", ["None", "India", "Japan"], index=0
+    )
+    city, weather_data = None, None
     if country != "None":
         cities = get_cities_in_country(country)
         if cities:
             city = st.sidebar.selectbox("Choose a city", cities)
-            if city != "None":
+            if city and city != "None":
                 weather_data = get_weather(city, country)
                 if weather_data:
                     st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
                     st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
+    return country, city, weather_data
+
+
+def render_preferences_ui():
+    """Render the user interface for collecting and displaying food preferences in a sidebar.
+
+    This function creates a sidebar in a Streamlit application where users can specify their food preferences, including taste, cooking time, ingredients, allergies, and dietary restrictions. If preferences have not been collected yet, it provides input fields for the user to enter their preferences. Once the user saves their preferences, the function updates the session state to indicate that preferences have been collected. If preferences have already been collected, it displays the saved preferences and offers an option to edit them.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
 
     st.sidebar.header("🍽️ Your Preferences")
+    prefs = st.session_state.preferences
 
-    # Only show preference inputs if not yet collected
     if not st.session_state.preferences_collected:
-        taste_options = ["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"]
-        st.session_state.preferences["taste"] = st.sidebar.selectbox(
-            "Taste Preference:", taste_options, index=5
+        prefs["taste"] = st.sidebar.selectbox(
+            "Taste Preference:",
+            ["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"],
+            index=5,
         )
-
-        time_options = [
-            "Quick (< 30 min)",
-            "Medium (30-60 min)",
-            "Long (> 60 min)",
-            "No Preference",
-        ]
-        st.session_state.preferences["cooking_time"] = st.sidebar.selectbox(
-            "Cooking Time:", time_options, index=3
+        prefs["cooking_time"] = st.sidebar.selectbox(
+            "Cooking Time:",
+            [
+                "Quick (< 30 min)",
+                "Medium (30-60 min)",
+                "Long (> 60 min)",
+                "No Preference",
+            ],
+            index=3,
         )
-
         ingredients_input = st.sidebar.text_area(
             "Ingredients you want to use (comma separated):"
         )
-        if ingredients_input:
-            st.session_state.preferences["ingredients"] = [
-                i.strip() for i in ingredients_input.split(",")
-            ]
-
+        prefs["ingredients"] = (
+            [i.strip() for i in ingredients_input.split(",")]
+            if ingredients_input
+            else []
+        )
         allergies_input = st.sidebar.text_area(
             "Allergies or ingredients to avoid (comma separated):"
         )
-        if allergies_input:
-            st.session_state.preferences["allergies"] = [
-                a.strip() for a in allergies_input.split(",")
-            ]
-
-        diet_options = ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"]
-        st.session_state.preferences["diet"] = st.sidebar.selectbox(
-            "Dietary Preference:", diet_options, index=0
+        prefs["allergies"] = (
+            [a.strip() for a in allergies_input.split(",")] if allergies_input else []
+        )
+        prefs["diet"] = st.sidebar.selectbox(
+            "Dietary Preference:",
+            ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"],
+            index=0,
         )
 
         if st.sidebar.button("Save Preferences"):
             st.session_state.preferences_collected = True
             st.sidebar.success("Preferences saved! Ask for recipe suggestions.")
     else:
-        # Display saved preferences
-        st.sidebar.write(f"**Taste:** {st.session_state.preferences['taste']}")
-        st.sidebar.write(
-            f"**Cooking Time:** {st.session_state.preferences['cooking_time']}"
-        )
-        st.sidebar.write(
-            f"**Ingredients:** {', '.join(st.session_state.preferences['ingredients']) if st.session_state.preferences['ingredients'] else 'No specific ingredients'}"
-        )
-        st.sidebar.write(
-            f"**Allergies:** {', '.join(st.session_state.preferences['allergies']) if st.session_state.preferences['allergies'] else 'None specified'}"
-        )
-        st.sidebar.write(f"**Diet:** {st.session_state.preferences['diet']}")
-
+        display_saved_preferences()
         if st.sidebar.button("Edit Preferences"):
             st.session_state.preferences_collected = False
             st.rerun()
-    # Show full chat history always
+
+
+def display_saved_preferences():
+    """Display the saved user preferences in the sidebar.
+
+    This function retrieves user preferences from the session state and displays them in the sidebar of the application. It includes information about taste, cooking time, ingredients, allergies, and diet.
+
+    Attributes:
+        prefs (dict): A dictionary containing user preferences, which includes:
+            - taste (str): The user's taste preference.
+            - cooking_time (str): The preferred cooking time.
+            - ingredients (list): A list of specific ingredients or an indication of no specific ingredients.
+            - allergies (list): A list of allergies or an indication of none specified.
+            - diet (str): The user's dietary preference.
+    """
+
+    prefs = st.session_state.preferences
+    st.sidebar.write(f"**Taste:** {prefs['taste']}")
+    st.sidebar.write(f"**Cooking Time:** {prefs['cooking_time']}")
+    st.sidebar.write(
+        f"**Ingredients:** {', '.join(prefs['ingredients']) if prefs['ingredients'] else 'No specific ingredients'}"
+    )
+    st.sidebar.write(
+        f"**Allergies:** {', '.join(prefs['allergies']) if prefs['allergies'] else 'None specified'}"
+    )
+    st.sidebar.write(f"**Diet:** {prefs['diet']}")
+
+
+def display_chat_history():
+    """Displays the chat history from the supervisor's session state.
+
+    This function iterates through the messages stored in the
+    `supervisor_history` of the session state and renders each
+    message in the chat interface. Each message is displayed
+    according to its role (e.g., user or assistant) and content.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+
     for msg in st.session_state.supervisor_history:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    # Chat Input
+
+def handle_product_matching_and_cart(raw_japanese_ingredients, language):
+    """Handles the product matching and cart functionality for a given list of Japanese ingredients.
+
+    This function displays a title and a button for users to find available ingredients based on the provided raw Japanese ingredients and language. Upon clicking the button, it retrieves the available ingredients and updates the session state. If the search is completed, it renders the matching products or displays a warning if no products are found. Additionally, it checks for items in the cart and renders the cart if items are present.
+
+    Args:
+        raw_japanese_ingredients (list): A list of raw ingredients in Japanese to be matched with available products.
+        language (str): The language in which the product information should be displayed.
+
+    Returns:
+        None
+    """
+
+    st.title("🛒 Product Finder for Ingredients")
+
+    if st.button("Find Available Ingredients"):
+        products = get_available_ingredients(raw_japanese_ingredients, language)
+        st.session_state.available_ingredients = products
+        st.session_state.search_done = True
+
+    if st.session_state.search_done:
+        if st.session_state.available_ingredients:
+            render_matching_products(st.session_state.available_ingredients)
+        else:
+            st.warning("No matching product found.")
+
+    if "cart_items" in st.session_state and st.session_state.cart_items:
+        render_cart()
+
+
+def get_recipe_suggestions(language: str):
+    """Get recipe suggestions based on user input and preferences.
+
+    This function initializes a chat interface for a recipe assistant, allowing users to request recipe suggestions based on their preferences, location, and current weather conditions. It processes user input to determine if they have specific dietary preferences or if they are looking for reviews of previously suggested recipes. The function then generates a prompt for a recipe suggestion model, which returns suitable recipes formatted according to specified rules.
+
+    Args:
+        language (str): The language in which the recipe suggestions should be provided.
+
+    Returns:
+        None: The function interacts with the user through a chat interface and does not return a value.
+    """
+
+    st.title("🧑‍🍳 Chat with Recipe Assistant")
+    country, city, weather_data = render_location_and_weather_ui()
+    render_preferences_ui()
+    display_chat_history()
+
     if user_input := st.chat_input("Ask for a recipe suggestion..."):
         is_review_request = any(
             keyword in user_input.lower()
@@ -327,7 +416,7 @@ def get_recipe_suggestions(language):
         response_iterator = st.session_state.supervisor_agent.run(
             messages=msg, stream=True
         )
-        
+
         with st.chat_message("assistant"):
             full_response = st.write_stream(stream_response_chunks(response_iterator))
 
@@ -444,7 +533,7 @@ def get_recipe_suggestions(language):
             st.session_state.dish_suggestions = list(dict.fromkeys(dish_suggestions))
             st.session_state.last_recipe_suggestions = (
                 st.session_state.dish_suggestions.copy()
-            )  # <-- ADD THIS
+            )
             st.session_state.final_dish_choice = None
             st.session_state.ready_for_recipe = False
 
@@ -457,15 +546,25 @@ def get_recipe_suggestions(language):
                     dish_name = clean_recipe_name(match.group(1).strip())
                     # print('--------dish_name', dish_name)
                     dish_name = re.sub(r"\s*\(.*?\)", "", dish_name).strip()
-                    if st.button(dish_name):
-                        st.session_state.final_dish_choice = dish_name
+                    if st.button(cleaned_name):
+                        st.session_state.final_dish_choice = cleaned_name
                         st.session_state.ready_for_recipe = True
+                        st.session_state.raw_japanese_ingredients = []
+                        st.session_state.available_ingredients = []
+                        st.session_state.search_done = []
+
                         st.rerun()
+
             elif not suggestion.lower().startswith(("rating:", "what people say:")):
                 cleaned_name = clean_recipe_name(suggestion)
                 if st.button(cleaned_name):
                     st.session_state.final_dish_choice = cleaned_name
                     st.session_state.ready_for_recipe = True
+
+                    st.session_state.raw_japanese_ingredients = []
+                    st.session_state.available_ingredients = []
+                    st.session_state.search_done = []
+
                     st.rerun()
 
     # Generate recipe
@@ -520,7 +619,9 @@ def get_recipe_suggestions(language):
         cleaned_dish_name = re.sub(r"^\s*-*\s*", "", cleaned_dish_name)
 
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
-        
+        st.session_state.raw_japanese_ingredients = recipe_from_json.get(
+            "ingredients", []
+        )
         if recipe_from_json:
             raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
             prompt = (
@@ -575,7 +676,9 @@ def get_recipe_suggestions(language):
 
             st.subheader("Nutritional Info")
             if recipe.nutrients:
-                df = pd.DataFrame(recipe.nutrients.items(), columns=['Name(項目)', 'Value(値)'])
+                df = pd.DataFrame(
+                    recipe.nutrients.items(), columns=["Name(項目)", "Value(値)"]
+                )
                 st.table(df)
             else:
                 st.write("No nutritional info found!")
@@ -587,59 +690,6 @@ def get_recipe_suggestions(language):
 
     # Ingredient Matching & Cart
     if recipe_generated:
-        st.title("🛒 Product Finder for Ingredients")
-        if st.button("Find Available Ingredients"):
-            with st.spinner("Finding matching products... ⏳"):
-                st.session_state.available_ingredients = get_available_ingredients(
-                    raw_japanese_ingredients, language
-                )
-                st.session_state.search_done = (
-                    True
-                )
-
-        # Show matching products if search was done
-        if st.session_state.search_done and not st.session_state.available_ingredients:
-            st.warning("⚠️ No matching product found.")
-        elif st.session_state.search_done:
-            st.subheader("Matching Products:")
-            product_list = st.session_state.available_ingredients
-
-            for i, product in enumerate(product_list):
-                st.subheader(f"{product['Product_name']}")
-                st.write(f"Price with Tax: {product['Tax']}")
-                st.write(f"Price: {product['Price']}")
-                st.write(f"Weight: {product['Weight']}")
-
-                quantity = st.number_input(
-                    f"Quantity for {product['Product_name']}",
-                    min_value=1,
-                    max_value=10,
-                    value=1,
-                    step=1,
-                    key=f"qty_{i}",
-                )
-
-                if st.button(f"Add to Cart", key=f"add_{i}"):
-                    # st.write('🛒 Button clicked for:', product["Product_name"])
-                    add_item_to_cart(product, quantity)
-                    st.session_state.last_added = product["Product_name"]
-                    # st.experimental_rerun()  # Force refresh to show cart update immediately
-
-        if st.session_state.last_added:
-            st.success(f"✅ {st.session_state.last_added} added to cart!")
-            st.session_state.last_added = None
-
-        if st.session_state.cart_items:
-            st.title("🧺 Your Cart:")
-            for item_line in display_cart_summary():
-                st.write(item_line)
-
-        for item in st.session_state.cart_items:
-            if st.button(f'Remove {item["Product_name"]} from cart'):
-                remove_item_from_cart(item["Product_name"])
-                break
-
-        if st.session_state.success_message:
-            st.success(st.session_state.success_message)
-            st.session_state.success_message = None
-        
+        handle_product_matching_and_cart(
+            st.session_state.raw_japanese_ingredients, language
+        )

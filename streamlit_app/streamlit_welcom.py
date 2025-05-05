@@ -3,13 +3,13 @@ import streamlit as st
 
 def display_welcome_message(language):
     """Displays a welcome message to the user based on the selected language.
-    
+
     This function presents a personalized welcome message for a cooking assistant application. It provides options for recipe creation and product finding, encouraging user interaction through buttons.
-    
+
     Args:
-        language (str): The language in which the welcome message should be displayed. 
+        language (str): The language in which the welcome message should be displayed.
                         Supported values are "English" and "Japanese".
-    
+
     Returns:
         None: This function does not return a value. It directly interacts with the Streamlit interface to display messages and buttons.
     """
