@@ -38,7 +38,76 @@ class RecipeChatAgent:
             db_url=self.db_url
         ),
         )
-        self.knowledge_base.load(recreate=False)
+        # self.knowledge_base.load(recreate=False)
+        self.agent = Agent(
+            name="Supervisor",
+            model=OpenAIChat(id="gpt-4o-mini"),
+            knowledge=self.knowledge_base,
+            search_knowledge=True,
+            read_chat_history=True,
+            storage=self.storage,
+            introduction=f"""
+                    You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
+
+                    IMPORTANT: 
+                    - Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
+                    {', '.join(self.japanese_recipe_titles)}
+                    - Formatted recipe titles with English translations (when available):
+                    {self.recipe_titles}
+                    - ALWAY SUGGEST 5 RECIPES
+
+                    STRICT RULES:
+                    1. You must ONLY suggest recipes with titles that EXACTLY match those in our database list above
+                    2. NEVER create new recipe names or modify existing ones
+                    3. NEVER combine or reconstruct recipe names
+                    4. If no exact matches are found for the user's query, say so clearly and suggest recipes that might be similar based on available options
+
+                    SEARCH PROCESS:
+                    1. When a user asks for a recipe in English, first translate their query to Japanese
+                    2. Break down the query into key ingredients or concepts (e.g., "mango" -> "マンゴー", "cherry blossom" -> "桜")
+                    3. Search for exact recipe titles containing these translated terms
+                    4. ONLY suggest recipes that appear EXACTLY in the provided list
+
+                    RESPONSE FORMAT:
+                    1. A brief conversational response
+                    2. Clearly state whether you found exact matches or not
+                    3. In the "RECIPE SUGGESTIONS:" section, list only recipes that exactly match titles in our database
+                    4. Format: [Japanese title] ([English translation]) - if English translation is available
+                    5. If no exact matches are found, clearly state this and suggest closest alternatives from our actual recipe list
+
+                    EXAMPLES:
+
+                    User: "I want recipes with sakura (cherry blossom)"
+                    Your process:
+                    - Translate "sakura" to "桜" in Japanese
+                    - Search for recipes with "桜" in the title
+                    - If none found exactly, do NOT create fake recipe names
+
+                    DO NOT respond like this (INCORRECT):
+                    "Here are some sakura recipes:
+                    RECIPE SUGGESTIONS:
+                    - ひんやりさくらアイスクリーム (Chilled Sakura Ice Cream)
+                    - さくらのクレープ (Sakura Crepe)
+                    - 桜の咲く特製のサラダ (Special Sakura Salad)"
+
+                    Instead, respond like this (CORRECT):
+                    "I searched for cherry blossom (桜) recipes in our database. While we don't have recipes with exactly 'sakura' or '桜' in the title, here are some traditional Japanese desserts from our collection:
+
+                    RECIPE SUGGESTIONS:
+                    - とろ〜りもちもち！みたらしだんご (Chewy Mitarashi Dango)
+                    - 水信玄餅風和菓子 (Mizu Shingen Mochi Style Japanese Sweet)
+
+                    Would you like me to recommend other traditional Japanese recipes instead?"
+
+                    FINAL REMINDERS:
+                    - The recipes MUST have EXACT titles as they appear in our database
+                    - Do NOT invent or modify recipe names
+                    - If no exact match exists, be honest and suggest alternatives from our actual recipe list
+                    - Always verify that suggested recipes exist in our database before recommending them
+                    """,
+            markdown=True,
+            show_tool_calls=True
+        )
     def _load_recipe_data(self,json_path="recipe_data/all_recipes.json"):
         try:
             with open(json_path, "r", encoding="utf-8") as f:
@@ -97,86 +166,17 @@ class RecipeChatAgent:
         agent.write_to_storage(session_id=agent.session_id)
         return agent
         
-    def create_agent(self) -> Agent:
-        agent = Agent(
-            name="Supervisor",
-            model=OpenAIChat(id="gpt-4o-mini"),
-            knowledge=self.knowledge_base,
-            search_knowledge=True,
-            read_chat_history=True,
-            storage=self.storage,
-            introduction=f"""
-            You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
-
-            IMPORTANT: 
-            - Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
-            {', '.join(self.japanese_recipe_titles)}
-            - Formatted recipe titles with English translations (when available):
-            {self.recipe_titles}
-            - ALWAY SUGGEST 5 RECIPES
-
-            STRICT RULES:
-            1. You must ONLY suggest recipes with titles that EXACTLY match those in our database list above
-            2. NEVER create new recipe names or modify existing ones
-            3. NEVER combine or reconstruct recipe names
-            4. If no exact matches are found for the user's query, say so clearly and suggest recipes that might be similar based on available options
-
-            SEARCH PROCESS:
-            1. When a user asks for a recipe in English, first translate their query to Japanese
-            2. Break down the query into key ingredients or concepts (e.g., "mango" -> "マンゴー", "cherry blossom" -> "桜")
-            3. Search for exact recipe titles containing these translated terms
-            4. ONLY suggest recipes that appear EXACTLY in the provided list
-
-            RESPONSE FORMAT:
-            1. A brief conversational response
-            2. Clearly state whether you found exact matches or not
-            3. In the "RECIPE SUGGESTIONS:" section, list only recipes that exactly match titles in our database
-            4. Format: [Japanese title] ([English translation]) - if English translation is available
-            5. If no exact matches are found, clearly state this and suggest closest alternatives from our actual recipe list
-
-            EXAMPLES:
-
-            User: "I want recipes with sakura (cherry blossom)"
-            Your process:
-            - Translate "sakura" to "桜" in Japanese
-            - Search for recipes with "桜" in the title
-            - If none found exactly, do NOT create fake recipe names
-
-            DO NOT respond like this (INCORRECT):
-            "Here are some sakura recipes:
-            RECIPE SUGGESTIONS:
-            - ひんやりさくらアイスクリーム (Chilled Sakura Ice Cream)
-            - さくらのクレープ (Sakura Crepe)
-            - 桜の咲く特製のサラダ (Special Sakura Salad)"
-
-            Instead, respond like this (CORRECT):
-            "I searched for cherry blossom (桜) recipes in our database. While we don't have recipes with exactly 'sakura' or '桜' in the title, here are some traditional Japanese desserts from our collection:
-
-            RECIPE SUGGESTIONS:
-            - とろ〜りもちもち！みたらしだんご (Chewy Mitarashi Dango)
-            - 水信玄餅風和菓子 (Mizu Shingen Mochi Style Japanese Sweet)
-
-            Would you like me to recommend other traditional Japanese recipes instead?"
-
-            FINAL REMINDERS:
-            - The recipes MUST have EXACT titles as they appear in our database
-            - Do NOT invent or modify recipe names
-            - If no exact match exists, be honest and suggest alternatives from our actual recipe list
-            - Always verify that suggested recipes exist in our database before recommending them
-            """,
-            markdown=True,
-            show_tool_calls=True
-        )
-        agent.agent_session = None
-        agent.session_id = str(uuid4())
-        if agent.model:
-            agent.model.clear()
-        if agent.memory is None:
-            agent.initialize_agent()
+    def create_chat(self) -> Agent:
+        self.agent.agent_session = None
+        self.agent.session_id = str(uuid4())
+        if self.agent.model:
+            self.agent.model.clear()
+        if self.agent.memory is None:
+            self.agent.initialize_agent()
 
         welcome_msg = self.get_welcome_message(self.language)["message"]
        
-        agent=self._update_memory(agent,welcome_msg)
+        agent=self._update_memory(self.agent,welcome_msg)
         return agent
 
     def get_welcome_message(self,language: str) -> Dict:
@@ -206,6 +206,40 @@ class RecipeChatAgent:
                 "options": ["English", "Japanese"],
                 "option_message": ["Switch to English", "Switch to Japanese"]
             }
+
+    def get_recipe_suggestion(self):
+        #call supervisor agent with session managemant
+        pass
+
+    def get_agent_for_session(self, session_id: str) -> Agent:
+        agent = self.agent
+        agent.session_id = session_id
+        agent_session = agent.storage.read(session_id=session_id)
+        # Ensure agent_session.memory is a dict
+        if agent_session and not isinstance(agent_session.memory, dict):
+            if hasattr(agent_session.memory, "dict"):
+                agent_session.memory = agent_session.memory.dict()
+            elif hasattr(agent_session.memory, "__dict__"):
+                agent_session.memory = dict(agent_session.memory.__dict__)
+            else:
+                raise TypeError(f"Cannot convert memory to dict: {type(agent_session.memory)}")
+        # DEBUG: Print the memory dict structure
+        import pprint
+        print("DEBUG: agent_session.memory type:", type(agent_session.memory))
+        pprint.pprint(agent_session.memory)
+        # Now load the session
+        agent.load_agent_session(session=agent_session)
+        if agent.memory is None:
+            agent.initialize_agent()
+        return agent
+
+    def process_user_message(self, session_id: str, message: str) -> str:
+        agent = self.get_agent_for_session(session_id)
+        # Run the agent with the new user message
+        run_response = agent.run(message=message, session_id=session_id, stream=False)
+        # Persist the updated session (history) in DB
+        agent.write_to_storage(session_id=session_id)
+        return run_response.content  # or run_response, if you want more info
 
 
     
