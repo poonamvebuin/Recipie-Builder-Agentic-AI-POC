@@ -551,6 +551,7 @@ def get_recipe_suggestions(language: str):
                         st.session_state.ready_for_recipe = True
                         st.session_state.raw_japanese_ingredients = []
                         st.session_state.available_ingredients = []
+                        st.session_state.search_done = []
 
                         st.rerun()
 
@@ -562,6 +563,7 @@ def get_recipe_suggestions(language: str):
 
                     st.session_state.raw_japanese_ingredients = []
                     st.session_state.available_ingredients = []
+                    st.session_state.search_done = []
 
                     st.rerun()
 
