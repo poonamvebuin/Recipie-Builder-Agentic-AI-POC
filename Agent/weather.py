@@ -68,15 +68,15 @@ india_cities = [
 
 def get_cities_in_country(country_name: str):
     """Retrieve a list of cities in a specified country.
-    
+
     Args:
-        country_name (str): The name of the country for which to retrieve cities. 
+        country_name (str): The name of the country for which to retrieve cities.
                             Accepted values are "Japan" and "India".
-    
+
     Returns:
-        list: A list of cities in the specified country. 
-              Returns a list of cities in Japan if the country name is "Japan", 
-              a list of cities in India if the country name is "India", 
+        list: A list of cities in the specified country.
+              Returns a list of cities in Japan if the country name is "Japan",
+              a list of cities in India if the country name is "India",
               or an empty list if the country name is not recognized.
     """
 
@@ -90,11 +90,11 @@ def get_cities_in_country(country_name: str):
 
 def get_weather(city: str, country="JP"):
     """Retrieve the current weather information for a specified city and country.
-    
+
     Args:
         city (str): The name of the city for which to retrieve the weather.
         country (str, optional): The country code (ISO 3166-1) for the city. Defaults to "JP".
-    
+
     Returns:
         dict or None: A dictionary containing the temperature, weather description, and humidity if the request is successful; otherwise, None.
     """
