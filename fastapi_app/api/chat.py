@@ -20,7 +20,7 @@ def create_new_chat(request: NewChatRequest, db: Session = Depends(get_db)):
     Create a new chat session using RecipeChatAgent (class-based).
     """
     recipe_agent = RecipeChatAgent(language=request.language)
-    agent = recipe_agent.create_agent()
+    agent = recipe_agent.create_chat()
     welcome_data = recipe_agent.get_welcome_message(request.language)
 
     # Prepare response
@@ -35,3 +35,21 @@ def create_new_chat(request: NewChatRequest, db: Session = Depends(get_db)):
 
     return response
 
+
+@router.post(RECIPE_SUGGESSTION, response_model=SupervisorResponse)
+def create_new_chat(request: SupervisorRequest, db: Session = Depends(get_db)):
+    """
+    Create a new chat session using RecipeChatAgent (class-based).
+    """
+    recipe_agent = RecipeChatAgent(language=request.language)
+    # Process the user message and get the response
+    response_content = recipe_agent.process_user_message(request.session_id, request.data.prompt)
+    # Prepare response (customize as needed)
+    response = SupervisorResponse(
+        session_id=request.session_id,
+        data=SupervisorResponseData(
+            message=response_content
+            # add more fields if needed
+        )
+    )
+    return response
