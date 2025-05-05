@@ -1,31 +1,33 @@
-# supervisor.py
-
-from agno.agent import Agent
-from agno.team.team import Team
-from pydantic import BaseModel
-from typing import Dict, List
 import json
-from agno.knowledge.json import JSONKnowledgeBase
-from agno.vectordb.pgvector import PgVector
-from agno.models.openai import OpenAIChat
-from deep_translator import GoogleTranslator
 import os
-from dotenv import load_dotenv
-from difflib import get_close_matches
 import re
-import json
+from difflib import get_close_matches
+from typing import Dict, List
+
+import streamlit as st
+from agno.agent import Agent
+from agno.knowledge.json import JSONKnowledgeBase
+from agno.models.openai import OpenAIChat
+from agno.team.team import Team
+from agno.vectordb.pgvector import PgVector
+from deep_translator import GoogleTranslator
+from dotenv import load_dotenv
+from pydantic import BaseModel
+
+db_host = st.secrets["database"]["host"]
+db_user = st.secrets["database"]["user"]
+db_password = st.secrets["database"]["password"]
+db_name = st.secrets["database"]["dbname"]
+port = st.secrets["database"]["port"]
+
 
 load_dotenv()
 
-db_url = f"postgresql+psycopg://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:{os.getenv('PORT')}/{os.getenv('DB_NAME')}"
-
+db_url = f"postgresql+psycopg://{db_user}:{db_password}@{db_host}:{port}/{db_name}"
 # Initialize knowledge base
 knowledge_base = JSONKnowledgeBase(
     path="recipe_data/all_recipes.json",
-    vector_db=PgVector(
-        table_name="json_documents",
-        db_url = db_url
-    ),
+    vector_db=PgVector(table_name="json_documents", db_url=db_url),
 )
 # Load the knowledge base
 knowledge_base.load(recreate=False)
@@ -36,8 +38,18 @@ class SupervisorResponse(BaseModel):
     suggestions: List[str]
 
 
-# Load the actual recipe data to ensure we have exact recipe titles
 def load_recipe_data(json_path="recipe_data/all_recipes.json"):
+    """Load recipe data from a JSON file.
+    
+    This function reads a JSON file containing recipe data and returns the parsed data as a Python object. If an error occurs during the loading process, an error message is printed, and an empty list is returned.
+    
+    Args:
+        json_path (str): The path to the JSON file containing the recipe data. Defaults to "recipe_data/all_recipes.json".
+    
+    Returns:
+        list: A list of recipes parsed from the JSON file. If an error occurs, an empty list is returned.
+    """
+
     try:
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -47,19 +59,34 @@ def load_recipe_data(json_path="recipe_data/all_recipes.json"):
         print(f"Error loading recipe data: {e}")
         return []
 
-# Extract all recipe titles with their English translations (if available)
+
 def extract_recipe_titles(recipe_data):
+    """Extracts recipe titles from a list of recipe data, including optional English translations.
+    
+    Args:
+        recipe_data (list of dict): A list of dictionaries, where each dictionary contains
+            recipe information. Each dictionary is expected to have a 'title' key for the
+            Japanese title and an 'english_name' key for the English translation.
+    
+    Returns:
+        list: A list of formatted recipe titles. Each title is in the format "Japanese Title (English Name)"
+              if an English name is provided; otherwise, it only includes the Japanese title.
+    """
+
     titles_with_translations = []
 
     for recipe in recipe_data:
-        japanese_title = recipe.get('title', '')
-        english_name = recipe.get('english_name', '')
+        japanese_title = recipe.get("title", "")
+        english_name = recipe.get("english_name", "")
 
         if japanese_title:
-            formatted_title = f"{japanese_title}" + (f" ({english_name})" if english_name else "")
+            formatted_title = f"{japanese_title}" + (
+                f" ({english_name})" if english_name else ""
+            )
             titles_with_translations.append(formatted_title)
 
     return titles_with_translations
+
 
 # Load the recipe data
 recipe_data = load_recipe_data()
@@ -68,19 +95,54 @@ recipe_data = load_recipe_data()
 recipe_titles = extract_recipe_titles(recipe_data)
 
 # Create a simple lookup set of just the Japanese titles for verification
-japanese_recipe_titles = {recipe.get('title', '') for recipe in recipe_data if recipe.get('title', '')}
+japanese_recipe_titles = {
+    recipe.get("title", "") for recipe in recipe_data if recipe.get("title", "")
+}
+
 
 def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
-    all_recipes = recipe_data_override if recipe_data_override is not None else recipe_data
+    """Get suggested titles with reviews based on provided titles.
+    
+    This function takes a list of titles and returns a list of suggested titles 
+    with their corresponding reviews and ratings. It matches the provided titles 
+    against a dataset of recipes, either from a default dataset or an optional 
+    override dataset. The function extracts relevant information such as average 
+    ratings, total review counts, and comments for the best matching titles.
+    
+    Args:
+        titles (list of str): A list of titles to match against the recipe dataset.
+        recipe_data_override (list of dict, optional): An optional list of recipe 
+            data to override the default dataset. Each recipe should be a dictionary 
+            containing at least a "title", "rating", and "reviews".
+    
+    Returns:
+        list of dict: A list of dictionaries containing the top two suggested titles 
+            with their reviews. Each dictionary includes the following keys:
+            - title (str): The original title provided.
+            - japanese_name (str): The matched title from the dataset.
+            - average_rating (float): The average rating of the matched title.
+            - total_reviews (int): The total number of reviews for the matched title.
+            - all_comments (list of str): A list of comments from the reviews.
+    """
+
+    all_recipes = (
+        recipe_data_override if recipe_data_override is not None else recipe_data
+    )
 
     reviewed = []
-    all_dataset_titles = [doc.get("title", "") for doc in all_recipes if doc.get("title")]
+    all_dataset_titles = [
+        doc.get("title", "") for doc in all_recipes if doc.get("title")
+    ]
 
     for title in titles:
-        japanese_title = re.sub(r'^[-\s]*japanese_title\s*-\s*', '', title).replace('-', '').strip()
-        japanese_title = re.sub(r'\s*\(.*?\)', '', japanese_title).strip()
+        japanese_title = (
+            re.sub(r"^[-\s]*japanese_title\s*-\s*", "", title).replace("-", "").strip()
+        )
+        japanese_title = re.sub(r"\s*\(.*?\)", "", japanese_title).strip()
 
-        best_match = get_close_matches(japanese_title, all_dataset_titles, n=1, cutoff=0.6)
+        best_match = get_close_matches(
+            japanese_title, all_dataset_titles, n=1, cutoff=0.6
+        )
         if not best_match:
             continue
 
@@ -94,20 +156,38 @@ def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
         if data.get("rating") and data["rating"].get("average") is not None:
             all_comments = []
             if data.get("reviews") and data["reviews"].get("items"):
-                all_comments = [item.get("comment", "") for item in data["reviews"]["items"] if item.get("comment")]
-                print('-------------------all_comments', all_comments)
-            reviewed.append({
-                "title": title,
-                "japanese_name": data.get("title"),
-                "average_rating": data["rating"]["average"],
-                "total_reviews": data["rating"].get("count", 0),
-                "all_comments": all_comments
-            })
+                all_comments = [
+                    item.get("comment", "")
+                    for item in data["reviews"]["items"]
+                    if item.get("comment")
+                ]
+                # print('-------------------all_comments', all_comments)
+            reviewed.append(
+                {
+                    "title": title,
+                    "japanese_name": data.get("title"),
+                    "average_rating": data["rating"]["average"],
+                    "total_reviews": data["rating"].get("count", 0),
+                    "all_comments": all_comments,
+                }
+            )
 
     reviewed.sort(key=lambda r: r["average_rating"], reverse=True)
     return reviewed[:2]
 
+
 def get_supervisor_agent():
+    """Get a configured SupervisorAgent for handling Japanese recipe inquiries.
+    
+    This function creates and returns an instance of the SupervisorAgent, which is designed to suggest recipes and provide reviews based on user requests. The agent is equipped with a specific system message that outlines its responsibilities, response rules, and behavior guidelines.
+    
+    Returns:
+        Agent: An instance of the SupervisorAgent configured with a knowledge base, response rules, and a system message tailored for Japanese recipe expertise.
+    
+    Raises:
+        None: This function does not raise any exceptions.
+    """
+
     agent = Agent(
         name="SupervisorAgent",
         model=OpenAIChat(id="gpt-4o-mini"),
@@ -119,6 +199,21 @@ def get_supervisor_agent():
 
                         1. Suggesting recipes from our official database.
                         2. Providing reviews and user feedback for dishes already suggested.
+
+                        ---
+                        📌 RESPONSE RULES:
+                        RULE 1: ALWAYS BE SMART
+                            Provide responses that are intelligent, insightful, and contextually appropriate.
+                            Avoid generic or vague replies.
+                        RULE 2: ALWAYS BE ATTRACTIVE IN RESPONSE
+                            Make your responses engaging, well-structured, and compelling.
+                            Use formatting, emojis (if appropriate), and expressive language to enhance presentation without overdoing it.
+                        RULE 3: BASED ON USER PREFERENCE OR CONTEXT, RESPOND IMPRESSIVELY
+                            If the user mentions a preference (e.g., weather, food, interest), tailor the response specifically to that.
+                            If the user says "no preference" or gives vague input, provide a detailed and impressive general response covering multiple relevant aspects.
+                            For example, in the case of weather or recommendations, include details like temperature, activities, mood, attire suggestions, etc.
+                        RULE 4: DO NOT PROVIDE RECIPES UNLESS EXPLICITLY ASKED
+                            Only give a recipe if the user clearly asks for it.
 
                         ---
                         📌 RECIPE DATABASE RULES:
@@ -139,12 +234,18 @@ def get_supervisor_agent():
                         - Translate keywords into Japanese if needed.
                         - Search for EXACT matches in titles.
                         - If no match, say so clearly and suggest 5 closest titles from the official list.
-                        - Format:
 
-                        RECIPE SUGGESTIONS:
-                        -  Recommended Dish: [Japanese title] (English translation)
-                        -  Recommended Dish: [Japanese title]
-                        - ...
+                        IMPORTANT:
+                        - ALWAYS FOLLOW FORMAT:
+                            RECIPE SUGGESTIONS:
+                            -  Recommended Dish: [Japanese title] (English translation)
+                            EX:
+                            寿司 (Sushi)
+                            天ぷら (Tempura)
+                            ラーメン (Ramen)
+                            うどん (Udon)
+                            そば (Soba
+                        - DO NOT GENERATE ANYTHING AFTER RECIPE SUGGESTIONS:
 
                         ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
                         - ONLY use the 5 recipes you suggested previously.
@@ -157,15 +258,14 @@ def get_supervisor_agent():
                         - Average rating and total reviews
                         - One user review
 
-                        - Format:
+                        IMPORTANT:
+                        - ALWAYS FOLLOW FORMAT:
+                            DO NOT BOLD THIS SECTION
 
-                        RECIPE SUGGESTIONS:
-                        DO NOT BOLD THIS SECTION
-                        ---
-                        Recommended Dish: [Japanese name] (English name)  
-                        Rating: ★★★★★ X.X (based on Y reviews)  
-                        What people say: “Sample user comment”
-                        ---
+                            RECIPE SUGGESTIONS:
+                                Recommended Dish: [Japanese name] (English name)  
+                                Rating: ★★★★★ X.X (based on Y reviews)  
+                                What people say: “Sample user comment”
 
                         ---
                         📌 IMPORTANT:
@@ -181,6 +281,6 @@ def get_supervisor_agent():
                         - Review quotes must be taken from actual data
         """,
         markdown=True,
-        show_tool_calls=True
+        show_tool_calls=True,
     )
     return agent
