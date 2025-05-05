@@ -101,11 +101,12 @@ def get_available_ingredients(recipe_ingredients, language):
     """
 
     if isinstance(recipe_ingredients, list):
-        raw_ingredients = recipe_ingredients
+        cleaned_ingredients = re.sub(r'\n+', '\n', recipe_ingredients)
+        raw_ingredients = [i.strip() for i in cleaned_ingredients.split('\n') if i.strip()]
     elif isinstance(recipe_ingredients, str):
-        raw_ingredients = [
-            i.strip() for i in recipe_ingredients.split("\n") if i.strip()
-        ]
+
+        cleaned_ingredients = re.sub(r'\n+', '\n', recipe_ingredients)
+        raw_ingredients = [i.strip() for i in cleaned_ingredients.split('\n') if i.strip()]
     else:
         raw_ingredients = []
 
@@ -140,7 +141,7 @@ def get_available_ingredients(recipe_ingredients, language):
                 ),
                 "Tax": match[1],
                 "Price": f"{match[2]}",
-                "Weight": f"{match[5]} {match[6]}",
+                "Weight": f"{match[3]} {match[4]}"
             }
             translated_matches.append(translated_match)
         # print('---------translated_matches-------', translated_matches)
@@ -151,7 +152,7 @@ def get_available_ingredients(recipe_ingredients, language):
                 "Product_name": p[0],
                 "Tax": p[1],
                 "Price": f"{p[2]}",
-                "Weight": f"{p[5]} {p[6]}",
+                "Weight": f"{p[3]} {p[4]}"
             }
             for p in matches
         ]

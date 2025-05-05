@@ -55,8 +55,7 @@ def search_products():
         conn = connect_to_postgres()
         cursor = conn.cursor()
         query = """
-            SELECT DISTINCT ON (product_name) product_name, tax, price, stock_quantity, category,
-                   weight, unit, brand, expiry_date, is_vegan
+            SELECT DISTINCT ON (product_name) product_name, tax, price, weight, unit, brand,is_vegan
             FROM ai.products;
         """
         cursor.execute(query)

@@ -194,9 +194,19 @@ def search_for_recipe_exact(title: str):
                     if source.get("type") == "video/mp4":
                         mp4_url = source.get("url")
                         break
-                # nutrients=recipe.get("nutrients",None)
             else:
                 poster_url = recipe.get("image_url", None)
+            nutrient_info=None
+            if recipe.get('nutrients'):
+                nutrient_info = []
+                nutrients_raw = recipe.get('nutrients', {})
+                if nutrients_raw:
+                    for name, data in nutrients_raw.items():
+                        nutrient_info.append({
+                            name: str(data['value']) + str(data['unit'])
+                        })
+            
+
             result = {
                 "recipe_title": recipe.get("title", ""),
                 "cuisine_type": recipe.get("source", None),
@@ -208,7 +218,7 @@ def search_for_recipe_exact(title: str):
                 "serving_size": serving_size,
                 "image_url": poster_url,
                 "mp4_url": mp4_url,
-                "nutrients": recipe.get("nutrients", None),
+                "nutrients": nutrient_info,
             }
 
             if recipe.get("difficulty_level"):
@@ -258,6 +268,7 @@ def get_agent():
             - If the recipe is in a different language than translate it accordingly.
             - Modify the recipe only if the number of people is more than the current servings. Adjust the ingredients, time, instructions proportionally.
             - When outputting the ingredients, ensure each ingredient appears on a **new line**.
+            - provide proper nutrients information in key value pair. Don't change any value from its data
             - If the ingredients contain line breaks (`\n`), maintain them and output each ingredient on a **separate line**.
         """
         ),
