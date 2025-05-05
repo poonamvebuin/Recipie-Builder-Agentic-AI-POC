@@ -520,8 +520,9 @@ def get_recipe_suggestions(language):
         cleaned_dish_name = re.sub(r"^\s*-*\s*", "", cleaned_dish_name)
 
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
-        raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
+        
         if recipe_from_json:
+            raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
             prompt = (
                 f"Please translate the following recipe into {language}:\n\n"
                 f"{preferences_context}\n\n"
@@ -574,42 +575,15 @@ def get_recipe_suggestions(language):
 
             st.subheader("Nutritional Info")
             if recipe.nutrients:
-                # Display nutritional information
-                df = pd.DataFrame(
-                    recipe.nutrients.items(), columns=["Nutrient", "Amount"]
-                )
-                df_no_index = df.reset_index(drop=True)
-                styled_df = df_no_index.style.set_table_styles(
-                    [
-                        {
-                            "selector": "thead th",
-                            "props": [
-                                ("background-color", "#f1f1f1"),
-                                ("color", "black"),
-                                ("font-weight", "bold"),
-                            ],
-                        },
-                        {
-                            "selector": "tbody td",
-                            "props": [("padding", "10px"), ("text-align", "center")],
-                        },
-                    ]
-                ).set_properties(
-                    **{
-                        "font-size": "14px",
-                        "font-family": "Arial, sans-serif",
-                        "color": "#333333",
-                    }
-                )
-
-                st.dataframe(styled_df)
+                df = pd.DataFrame(recipe.nutrients.items(), columns=['Name(項目)', 'Value(値)'])
+                st.table(df)
             else:
                 st.write("No nutritional info found!")
 
             st.session_state.recipe = recipe
             recipe_generated = True
         else:
-            st.error(f"No reccipe found for{cleaned_dish_name}")
+            st.error(f"No recipe found for{cleaned_dish_name}")
 
     # Ingredient Matching & Cart
     if recipe_generated:
