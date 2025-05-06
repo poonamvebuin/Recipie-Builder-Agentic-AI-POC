@@ -619,10 +619,11 @@ def get_recipe_suggestions(language: str):
         cleaned_dish_name = re.sub(r"^\s*-*\s*", "", cleaned_dish_name)
 
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
-        st.session_state.raw_japanese_ingredients = recipe_from_json.get(
+        
+        if recipe_from_json:
+            st.session_state.raw_japanese_ingredients = recipe_from_json.get(
             "ingredients", []
         )
-        if recipe_from_json:
             raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
             prompt = (
                 f"Please translate the following recipe into {language}:\n\n"
