@@ -200,8 +200,49 @@ def get_recipe_suggestions(language: str):
     country, city, weather_data = render_location_and_weather_ui()
     render_preferences_ui()
     display_chat_history()
+    # 🔖 Quick Prompt Buttons
+    st.markdown("### 🔖 Quick Prompts")
 
-    if user_input := st.chat_input("Ask for a recipe suggestion..."):
+    # Dynamic columns
+    cols = st.columns(5)
+
+    with cols[0]:
+        if st.button("🍱 Balanced Dinner (4ppl, low-cal)" if language == "English" else "🍱 バランスの取れた夕食（4人分）"):
+            st.session_state.chat_input_prompt = (
+                "I am looking for a balanced dinner for 4 people (under 600 calories per person). Kids don't like spicy food." if language == "English" else "4人分のバランスの取れた夕食（1人あたり600カロリー以下）を探しています。子供は辛い食べ物が好きではありません。"
+            )
+
+    with cols[1]:
+        if st.button("🎨 Colorful Lunchbox (No nuts)" if language == "English" else "🎨 カラフルなお弁当（ナッツなし)"):
+            st.session_state.chat_input_prompt = (
+                "I need ideas for a colorful, mess-free lunch box for my picky 6 year old. No nuts allowed." if language == "English" else "こだわりの強い6歳児のために、カラフルでごちゃごちゃしないお弁当箱のアイデアが欲しい。ナッツ類は不可。"
+            )
+
+    with cols[2]:
+        if st.button("🥘 Cozy One-Pot Meal for 2" if language == "English" else "🥘 一鍋スタイル料理（2人分）"):
+            st.session_state.chat_input_prompt = (
+                "Suggest a heartwarming one-pot style meal for two." if language == "English" else "2人分の心温まる一鍋スタイルの料理を提案してください。"
+            )
+
+    with cols[3]:
+        if st.button("🍉 Cool Summer Dishes" if language == "English" else "🍉 夏のさっぱり料理"):
+            st.session_state.chat_input_prompt = (
+                "Suggest five healthy and cool summer dishes using fresh vegetables and fruits." if language == "English" else "新鮮な野菜やフルーツを使った、ヘルシーで涼しげな夏の料理を5つ提案する"
+            )
+    
+    with cols[4]:
+        if st.button("💪 High-Protein Post-Workout Japanese Food" if language == "English" else "💪 トレーニング後の高タンパク和食"):
+            st.session_state.chat_input_prompt = (
+                "I would like to know what high protein Japanese food to eat after training." if language == "English" else "トレーニング後に食べる高タンパクな和食が知りたいです。"
+            )
+
+    
+    
+    user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
+    if "chat_input_prompt" in st.session_state:
+        user_input = st.session_state.chat_input_prompt
+        del st.session_state.chat_input_prompt
+    if user_input:
         is_review_request = any(
             keyword in user_input.lower()
             for keyword in [
@@ -619,10 +660,11 @@ def get_recipe_suggestions(language: str):
         cleaned_dish_name = re.sub(r"^\s*-*\s*", "", cleaned_dish_name)
 
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
-        st.session_state.raw_japanese_ingredients = recipe_from_json.get(
+        
+        if recipe_from_json:
+            st.session_state.raw_japanese_ingredients = recipe_from_json.get(
             "ingredients", []
         )
-        if recipe_from_json:
             raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
             prompt = (
                 f"Please translate the following recipe into {language}:\n\n"
@@ -693,3 +735,5 @@ def get_recipe_suggestions(language: str):
         handle_product_matching_and_cart(
             st.session_state.raw_japanese_ingredients, language
         )
+
+
