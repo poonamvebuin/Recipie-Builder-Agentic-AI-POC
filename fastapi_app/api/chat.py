@@ -43,13 +43,12 @@ def create_new_chat(request: SupervisorRequest, db: Session = Depends(get_db)):
     """
     recipe_agent = RecipeChatAgent(language=request.language)
     # Process the user message and get the response
-    response_content = recipe_agent.process_user_message(request.session_id, request.data.prompt)
+    response_content = recipe_agent.process_user_message(request.session_id, request.data)
     # Prepare response (customize as needed)
     response = SupervisorResponse(
-        session_id=request.session_id,
-        data=SupervisorResponseData(
-            message=response_content
-            # add more fields if needed
-        )
+        success=True,
+        status_code=200,
+        message="Success",
+        data=response_content
     )
     return response

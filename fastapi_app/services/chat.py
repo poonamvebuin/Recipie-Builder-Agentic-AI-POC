@@ -6,7 +6,7 @@ from agno.knowledge.json import JSONKnowledgeBase
 from agno.models.openai import OpenAIChat
 from agno.storage.postgres import PostgresStorage
 import os
-from typing import Dict
+from typing import Dict, Any
 
 from agno.vectordb.pgvector import PgVector
 from dotenv import load_dotenv
@@ -46,65 +46,72 @@ class RecipeChatAgent:
             search_knowledge=True,
             read_chat_history=True,
             storage=self.storage,
-            introduction=f"""
-                    You are a helpful recipe supervisor specializing in Japanese recipes. Your job is to help users find EXACT recipes from our database by matching keywords and ingredients.
+            system_message=f"""
+                You are a Japanese recipe expert. Your two main responsibilities are:
 
-                    IMPORTANT: 
-                    - Our database contains ONLY the following Japanese recipe titles. You MUST ONLY suggest recipes from this exact list:
-                    {', '.join(self.japanese_recipe_titles)}
-                    - Formatted recipe titles with English translations (when available):
-                    {self.recipe_titles}
-                    - ALWAY SUGGEST 5 RECIPES
+                1. Suggesting recipes from our official database.
+                2. Providing reviews and user feedback for dishes already suggested.
 
-                    STRICT RULES:
-                    1. You must ONLY suggest recipes with titles that EXACTLY match those in our database list above
-                    2. NEVER create new recipe names or modify existing ones
-                    3. NEVER combine or reconstruct recipe names
-                    4. If no exact matches are found for the user's query, say so clearly and suggest recipes that might be similar based on available options
+                ---
+                📌 RECIPE DATABASE RULES:
 
-                    SEARCH PROCESS:
-                    1. When a user asks for a recipe in English, first translate their query to Japanese
-                    2. Break down the query into key ingredients or concepts (e.g., "mango" -> "マンゴー", "cherry blossom" -> "桜")
-                    3. Search for exact recipe titles containing these translated terms
-                    4. ONLY suggest recipes that appear EXACTLY in the provided list
+                - ONLY suggest recipes from this exact list:
+                {', '.join(self.japanese_recipe_titles)}
 
-                    RESPONSE FORMAT:
-                    1. A brief conversational response
-                    2. Clearly state whether you found exact matches or not
-                    3. In the "RECIPE SUGGESTIONS:" section, list only recipes that exactly match titles in our database
-                    4. Format: [Japanese title] ([English translation]) - if English translation is available
-                    5. If no exact matches are found, clearly state this and suggest closest alternatives from our actual recipe list
+                - Titles may include English translations:
+                {self.recipe_titles}
 
-                    EXAMPLES:
+                - NEVER invent, rename, or combine recipes.
+                - ALWAYS suggest exactly 5 recipes when asked for recommendations.
 
-                    User: "I want recipes with sakura (cherry blossom)"
-                    Your process:
-                    - Translate "sakura" to "桜" in Japanese
-                    - Search for recipes with "桜" in the title
-                    - If none found exactly, do NOT create fake recipe names
+                ---
+                📌 RESPONSE BEHAVIOR:
 
-                    DO NOT respond like this (INCORRECT):
-                    "Here are some sakura recipes:
-                    RECIPE SUGGESTIONS:
-                    - ひんやりさくらアイスクリーム (Chilled Sakura Ice Cream)
-                    - さくらのクレープ (Sakura Crepe)
-                    - 桜の咲く特製のサラダ (Special Sakura Salad)"
+                ▶ If the user ASKS FOR RECIPES:
+                - Translate keywords into Japanese if needed.
+                - Search for EXACT matches in titles.
+                - If no match, say so clearly and suggest 5 closest titles from the official list.
+                - Format:
 
-                    Instead, respond like this (CORRECT):
-                    "I searched for cherry blossom (桜) recipes in our database. While we don't have recipes with exactly 'sakura' or '桜' in the title, here are some traditional Japanese desserts from our collection:
+                RECIPE SUGGESTIONS:
+                - [Japanese title] (English translation)
+                - [Japanese title]
+                - ...
 
-                    RECIPE SUGGESTIONS:
-                    - とろ〜りもちもち！みたらしだんご (Chewy Mitarashi Dango)
-                    - 水信玄餅風和菓子 (Mizu Shingen Mochi Style Japanese Sweet)
+                ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
+                - ONLY use the 5 recipes you suggested previously.
+                - DO NOT suggest new recipes.
+                - From those 5, select 1-2 top-rated dishes from review data
+                - IF REVIEW NOT GIVEN THEN NOT SUGGEST
 
-                    Would you like me to recommend other traditional Japanese recipes instead?"
+                - Include:
+                - Japanese name (and English translation if available)
+                - Average rating and total reviews
+                - One user review
 
-                    FINAL REMINDERS:
-                    - The recipes MUST have EXACT titles as they appear in our database
-                    - Do NOT invent or modify recipe names
-                    - If no exact match exists, be honest and suggest alternatives from our actual recipe list
-                    - Always verify that suggested recipes exist in our database before recommending them
-                    """,
+                - Format:
+
+                RECIPE SUGGESTIONS:
+                DO NOT BOLD THIS SECTION
+                ---
+                Recommended Dish: [Japanese name] (English name)  
+                Rating: ★★★★★ X.X (based on Y reviews)  
+                What people say: “Sample user comment”
+                ---
+
+                ---
+                📌 IMPORTANT:
+                - NEVER mix recipe suggestions and reviews in the same response.
+                - When reviewing, only analyze recipes that were part of the last recipe suggestion list.
+                - Be honest if no review data is available for a dish.
+
+                ---
+                📌 FINAL NOTES:
+                - Recipe suggestions must come ONLY from this list:
+                {', '.join(self.japanese_recipe_titles)}
+
+                - Review quotes must be taken from actual data
+            """,
             markdown=True,
             show_tool_calls=True
         )
@@ -207,39 +214,132 @@ class RecipeChatAgent:
                 "option_message": ["Switch to English", "Switch to Japanese"]
             }
 
-    def get_recipe_suggestion(self):
-        #call supervisor agent with session managemant
-        pass
+    def get_supervisor_prompt(self, preferences, prompt):
+        is_review_request = any(
+            keyword in prompt.lower()
+            for keyword in ["what people like", "which one is best", "top rated", "reviews", "recommend best"]
+        )
+        print('----------is_review_request', is_review_request)
+        if preferences:
+            text = ""
+            if preferences.taste:
+                text += f" - Taste must be {preferences.taste}"
+            if preferences.cooking_time:
+                text += f" - Cooking Time must be {preferences.cooking_time}"
+            if preferences.ingredients:
+                text += f" - Ingredients to include: {', '.join(preferences.ingredients) if preferences.ingredients else 'No specific ingredients'}"
+            if preferences.allergy_or_ingredient_to_avoid:
+                text += f"""MOST IMPORTANT: Suggest Recipe which don't have mentioned Allergies
+                        Allergies/Avoid: {', '.join(preferences.allergy_or_ingredient_to_avoid) if preferences.allergy_or_ingredient_to_avoid else 'None specified'}
+                        """
+            if preferences.dietry:
+                text += f" - Diet must be {preferences.dietry}."
+            # Include user preferences in the prompt
+            preferences_text = f"""
+                    IMPORTANT USER PREFERENCES:
+                    {text}
 
-    def get_agent_for_session(self, session_id: str) -> Agent:
-        agent = self.agent
-        agent.session_id = session_id
-        agent_session = agent.storage.read(session_id=session_id)
-        # Ensure agent_session.memory is a dict
-        if agent_session and not isinstance(agent_session.memory, dict):
-            if hasattr(agent_session.memory, "dict"):
-                agent_session.memory = agent_session.memory.dict()
-            elif hasattr(agent_session.memory, "__dict__"):
-                agent_session.memory = dict(agent_session.memory.__dict__)
-            else:
-                raise TypeError(f"Cannot convert memory to dict: {type(agent_session.memory)}")
-        # DEBUG: Print the memory dict structure
-        import pprint
-        print("DEBUG: agent_session.memory type:", type(agent_session.memory))
-        pprint.pprint(agent_session.memory)
-        # Now load the session
-        agent.load_agent_session(session=agent_session)
-        if agent.memory is None:
-            agent.initialize_agent()
-        return agent
+                    Based on these preferences and the user's request: "{prompt}", suggest 5 suitable recipes.
+                    Please ensure All the user preferences must be satisfied
 
-    def process_user_message(self, session_id: str, message: str) -> str:
-        agent = self.get_agent_for_session(session_id)
-        # Run the agent with the new user message
-        run_response = agent.run(message=message, session_id=session_id, stream=False)
-        # Persist the updated session (history) in DB
-        agent.write_to_storage(session_id=session_id)
-        return run_response.content  # or run_response, if you want more info
+                    IMPORTANT FORMATTING RULES:
+                    1. Format your response as conversational text, followed by "RECIPE SUGGESTIONS:" 
+                    2. List each recipe on a new line
+                    3. For Japanese recipes, use format: "寿司 (Sushi)" - Japanese name first, then English in parentheses
+                    4. ONLY include the recipe names - NO URLs, NO image links, NO descriptions, NO additional text
+                    5. DO NOT use JSON format
+
+                    Example correct format:
+                    Here are some recipe suggestions based on your preferences.
+
+                    RECIPE SUGGESTIONS:
+                    寿司 (Sushi)
+                    天ぷら (Tempura)
+                    ラーメン (Ramen)
+                    うどん (Udon)
+                    そば (Soba)
+                    """
+            prompt = f"{preferences_text} IMPORTANT: Generate response in {self.language}"
+
+        # if weather_data:
+        #     prompt += f"""MUST ADD WEATHER DETAILS AND SUGGEST RECIPE
+        #                 {weather_data['temperature']}:
+        #                     - If the temperature is over 30°C and the weather is hot or sunny, suggest cold or refreshing dishes, drinks.
+        #                     - If the temperature is below 15°C and the weather is cold, suggest warm and comforting dishes, drinks.
+        #                     - If the temperature is between 15°C and 30°C, suggest balanced dishes,drinks that are neither too hot nor too cold.
+        #                 {weather_data['description']}:
+        #                     - If  weather data includes the word **rain**: suggest meal based on rain"""
+
+        # if is_review_request:
+        #     reviewed_data = get_suggested_titles_with_reviews(st.session_state.last_recipe_suggestions)
+        #     if not reviewed_data:
+        #         st.warning("❌ No review data available. Showing previous recipe suggestions again:")
+        #
+        #         if st.session_state.last_recipe_suggestions:
+        #             repeat_response = "No review data available. Here are the previous suggestions again:\n\nRECIPE SUGGESTIONS:\n"
+        #             repeat_response += "\n".join(st.session_state.last_recipe_suggestions)
+        #
+        #             with st.chat_message("assistant"):
+        #                 st.markdown(repeat_response)
+        #
+        #             st.session_state.supervisor_history.append({"role": "assistant", "content": repeat_response})
+        #
+        #             # Show buttons for previous suggestions
+        #             st.subheader("🍽️ Suggested Recipes:")
+        #             for suggestion in st.session_state.last_recipe_suggestions:
+        #                 cleaned_name = clean_recipe_name(suggestion)
+        #                 if st.button(cleaned_name):
+        #                     st.session_state.final_dish_choice = re.sub(r'\s*\(.*?\)', '', cleaned_name).strip()
+        #                     st.session_state.ready_for_recipe = True
+        #                     st.rerun()
+        #         return
+        #     else:
+        #         reviewed_text = ""
+        #         for review in reviewed_data[:2]:
+        #             reviewed_text += f"Dish: {review['japanese_name']}\n"
+        #             reviewed_text += f"Rating: {review['average_rating']} (from {review['total_reviews']} reviews)\n"
+        #             reviewed_text += "Comments:\n"
+        #
+        #             comments = review.get("all_comments", [])
+        #             for idx, comment in enumerate(comments):
+        #                 reviewed_text += f"{idx + 1}. {comment}\n"
+        #
+        #             reviewed_text += "---\n"
+        #
+        #         prompt += f"""
+        #                         The user asked: "{user_input}"
+        #
+        #                         You are an assistant helping the user decide which recipe is most liked **from a previous list**.
+        #
+        #                         DO NOT SUGGEST ANY NEW RECIPES. You must ONLY use the review data below.
+        #
+        #                         REVIEW DATA:
+        #                         {reviewed_text}
+        #
+        #                         TASK:
+        #                         1. Carefully read all listed reviews for each dish.
+        #                         2. Choose the top 1–2 dishes based on rating and user feedback.
+        #                         3. In your response, show the dish name, rating, and quote several real comments from the list.
+        #                         4. Then write: "RECIPE SUGGESTIONS:" and list ONLY those 1–2 dish names on separate lines.
+        #
+        #                         IMPORTANT:
+        #                         - DO NOT make up new dishes or comments.
+        #                         - DO NOT summarize vaguely — use real reviews.
+        #                         - Write in a friendly, natural tone in {language}.
+        #                     """
+
+        self.msg = [{"role": "user", "content": prompt}]
+        print(self.msg)
+
+    def process_user_message(self, session_id: str, data) -> dict[str, Any]:
+        self.get_supervisor_prompt(data.preferences, data.prompt)
+        run_response = self.agent.run(messages=self.msg, session_id=session_id, stream=False)
+        print(run_response.content)
+        data = run_response.content.split("RECIPE SUGGESTIONS:")
+        return {
+            "response": data[0],
+            "suggestions": data[1].split("\n")[1::]
+        }
 
 
     
