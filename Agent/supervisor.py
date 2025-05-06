@@ -180,10 +180,9 @@ def get_budget_friendly_recipes(recipe_titles, recipe_data):
         if title in recipe_titles:
             cost = recipe.get("cost_estimate", {}).get("value")
             if cost is not None:
-                filtered.append(recipe)
+                filtered.append({"title": title, "cost_estimate": cost})
 
-    # Sort by ascending cost
-    # filtered.sort(key=lambda r: r.get("cost_estimate", {}).get("value", float("inf")))
+    # filtered.sort(key=lambda r: r.get("cost_estimate", float("inf")))
     return filtered
 
 def get_ingrediants_based_recipes(recipe_titles, recipe_data):
@@ -194,9 +193,8 @@ def get_ingrediants_based_recipes(recipe_titles, recipe_data):
         if title in recipe_titles:
             ingredients = recipe.get("ingredients", [])
             if isinstance(ingredients, list) and len(ingredients) >= 1:
-                filtered.append(recipe)
+                filtered.append({"title": title, "ingredients": ingredients})
 
-    # Sort by fewest ingredients (optional)
     # filtered.sort(key=lambda r: len(r.get("ingredients", [])))
     return filtered
 
@@ -255,6 +253,11 @@ def get_supervisor_agent():
                         RECIPES BASED ON BUDGET:
                         - Suggest only from the list: {budget_friendly_recipes}.
                         - If a budget is provided, recommend recipes that fit within the specified budget else suggest recipes priced under 200円.
+                        
+                        WHEN ASKED FOR RECIPES BASED ON INGREDIANTS:
+                        - ONLY suggest recipes from this exact list: {ingrediants_based_recipes}
+                        - if ingrediants is given in input then suggest only recipes which have given ingrediants
+                        - if no ingrediants is given then give recipes based on input
 
                         RESPONSE BEHAVIOR:
                         ▶ If the user ASKS FOR RECIPES:
