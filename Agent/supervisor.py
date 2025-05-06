@@ -172,6 +172,44 @@ def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
     return reviewed[:2]
 
 
+def get_budget_friendly_recipes(recipe_titles, recipe_data):
+    filtered = []
+
+    for recipe in recipe_data:
+        title = recipe.get("title", "")
+        if title in recipe_titles:
+            cost = recipe.get("cost_estimate", {}).get("value")
+            if cost is not None:
+                filtered.append(recipe)
+
+    # Sort by ascending cost
+    # filtered.sort(key=lambda r: r.get("cost_estimate", {}).get("value", float("inf")))
+    return filtered
+
+def get_ingrediants_based_recipes(recipe_titles, recipe_data):
+    filtered = []
+
+    for recipe in recipe_data:
+        title = recipe.get("title", "")
+        if title in recipe_titles:
+            ingredients = recipe.get("ingredients", [])
+            if isinstance(ingredients, list) and len(ingredients) >= 1:
+                filtered.append(recipe)
+
+    # Sort by fewest ingredients (optional)
+    # filtered.sort(key=lambda r: len(r.get("ingredients", [])))
+    return filtered
+
+budget_friendly_recipes = get_budget_friendly_recipes(
+    recipe_titles, recipe_data
+)
+# print("-------------budget_friendly_recipes", budget_friendly_recipes)
+
+ingrediants_based_recipes = get_ingrediants_based_recipes(
+    recipe_titles, recipe_data
+)
+# print("-------------ingrediants_based_recipes", ingrediants_based_recipes)
+
 def get_supervisor_agent():
     """Get a configured SupervisorAgent for handling Japanese recipe inquiries.
 
@@ -196,8 +234,7 @@ def get_supervisor_agent():
                         1. Suggesting recipes from our official database.
                         2. Providing reviews and user feedback for dishes already suggested.
 
-                        ---
-                        📌 RESPONSE RULES:
+                        RESPONSE RULES:
                         RULE 1: ALWAYS BE SMART
                             Provide responses that are intelligent, insightful, and contextually appropriate.
                             Avoid generic or vague replies.
@@ -211,26 +248,19 @@ def get_supervisor_agent():
                         RULE 4: DO NOT PROVIDE RECIPES UNLESS EXPLICITLY ASKED
                             Only give a recipe if the user clearly asks for it.
 
-                        ---
-                        📌 RECIPE DATABASE RULES:
+                        RECIPE DATABASE RULES:
+                        - ONLY suggest recipes from this exact list:{', '.join(japanese_recipe_titles)}
+                        - Titles may include English translations:{recipe_titles}
 
-                        - ONLY suggest recipes from this exact list:
-                        {', '.join(japanese_recipe_titles)}
+                        RECIPES BASED ON BUDGET:
+                        - Suggest only from the list: {budget_friendly_recipes}.
+                        - If a budget is provided, recommend recipes that fit within the specified budget else suggest recipes priced under 200円.
 
-                        - Titles may include English translations:
-                        {recipe_titles}
-
-                        - NEVER invent, rename, or combine recipes.
-                        - ALWAYS suggest exactly 5 recipes when asked for recommendations.
-
-                        ---
-                        📌 RESPONSE BEHAVIOR:
-
+                        RESPONSE BEHAVIOR:
                         ▶ If the user ASKS FOR RECIPES:
                         - Translate keywords into Japanese if needed.
                         - Search for EXACT matches in titles.
                         - If no match, say so clearly and suggest 5 closest titles from the official list.
-
                         IMPORTANT:
                         - ALWAYS FOLLOW FORMAT:
                             RECIPE SUGGESTIONS:
@@ -241,7 +271,6 @@ def get_supervisor_agent():
                             ラーメン (Ramen)
                             うどん (Udon)
                             そば (Soba
-                        - DO NOT GENERATE ANYTHING AFTER RECIPE SUGGESTIONS:
 
                         ▶ If the user ASKS FOR REVIEWS or ASKS “What do people like most?”:
                         - ONLY use the 5 recipes you suggested previously.
@@ -252,25 +281,21 @@ def get_supervisor_agent():
                         - Include:
                         - Japanese name (and English translation if available)
                         - Average rating and total reviews
-                        - One user review
+                        - user reviews
 
                         IMPORTANT:
                         - ALWAYS FOLLOW FORMAT:
-                            DO NOT BOLD THIS SECTION
-
                             RECIPE SUGGESTIONS:
                                 Recommended Dish: [Japanese name] (English name)  
                                 Rating: ★★★★★ X.X (based on Y reviews)  
                                 What people say: “Sample user comment”
 
-                        ---
-                        📌 IMPORTANT:
+                        IMPORTANT:
                         - NEVER mix recipe suggestions and reviews in the same response.
                         - When reviewing, only analyze recipes that were part of the last recipe suggestion list.
                         - Be honest if no review data is available for a dish.
 
-                        ---
-                        📌 FINAL NOTES:
+                        FINAL NOTES:
                         - Recipe suggestions must come ONLY from this list:
                         {', '.join(japanese_recipe_titles)}
 
