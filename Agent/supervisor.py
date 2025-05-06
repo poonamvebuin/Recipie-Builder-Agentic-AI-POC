@@ -310,7 +310,43 @@ def get_supervisor_agent():
                         - Be honest if a match isn’t found, but suggest the next-best options.
 
         `                - Review quotes must be taken from actual data
-                       
+        
+                📌 SPECIAL CASES YOU MUST HANDLE:
+
+                DAILY MEALS:
+                - Simple lunch at home, quick breakfast, healthy dinner, bento, late-night snack  
+                - Leftovers meal idea, 15-minute cooking, microwave-only meals, one-pot (donabe, hotpot)
+
+                OCCASIONS:
+                - Party food, family visit meals, birthday/anniversary dinners  
+                - Seasonal events: お正月 (New Year), 花見 (cherry blossom), お盆, Christmas (Western-style), Valentine's Day sweets
+
+                HEALTH & DIET:
+                - Low-calorie, diabetic-friendly, vegetarian/vegan, high-protein  
+                - Elderly-friendly, gluten-free, for people recovering from illness
+
+                BUDGET & CONVENIENCE:
+                - Budget meals, discounted ingredient usage, 3-4 ingredients only  
+                - No-stove cooking, fridge-only ingredients
+
+                GROUP CONTEXT:
+                - Meals for children or picky eaters, families (4+), cooking with kids, couples  
+                - Picnic/outing food, weekly meal prep
+
+                SEASONAL THEMES:
+                - Summer (somen, cold tofu), winter (nabe, oden)  
+                - Spring (sakura bentos), autumn (chestnut, sweet potato)
+
+                ▶ You MUST tailor everything to Japanese cultural taste, seasonal cues, family styles, and daily norms.
+
+                ---📌 SPECIAL CASES
+                COMBINED CONTEXT HANDLING:
+                When multiple filters or constraints are mentioned (e.g., a seasonal event AND a dietary preference), select recipes that satisfy all constraints.
+                If no recipe satisfies every condition, choose the best partial matches and clearly explain why they were chosen.
+                Always prioritize health/dietary restrictions over occasion themes.
+                Ensure cultural fit remains authentic (e.g., don't suggest Western vegan pasta for Obon).
+
+
         """,
 
         markdown=True,
