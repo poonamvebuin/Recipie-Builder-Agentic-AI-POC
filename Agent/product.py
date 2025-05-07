@@ -174,7 +174,7 @@ def get_available_ingredients(recipe_ingredients, language):
                 "Product_name": translate_word(match[0], "ja", "en"),
                 "Tax": match[1],
                 "Price": f"{match[2]}",
-                "Weight": f"{match[3]} {match[4]}",
+                "Weight": f"{match[3]} {match[4]}".replace("pieces","個"),
             }
             for match in matches
         ]
@@ -184,7 +184,7 @@ def get_available_ingredients(recipe_ingredients, language):
                 "Product_name": p[0],
                 "Tax": p[1],
                 "Price": f"{p[2]}",
-                "Weight": f"{p[3]} {p[4]}",
+                "Weight": f"{p[3]} {p[4]}".replace("pieces","個"),
             }
             for p in matches
         ]
