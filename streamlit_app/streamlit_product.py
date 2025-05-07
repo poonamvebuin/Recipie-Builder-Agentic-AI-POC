@@ -1,8 +1,4 @@
 import streamlit as st
-
-from Agent.product import get_available_ingredients
-
-import streamlit as st
 from Agent.product import get_available_ingredients
 from streamlit_app.ui_helpers import render_cart, render_matching_products
 
@@ -26,22 +22,41 @@ def get_product_suggestions(language):
     """
 
     st.title("🛒 Product Finder")
-    product_input = st.text_input(
-        "Enter comma separated list of products or ingredients:"
-    )
+    st.markdown("### 🔎 Most Popular Searches")
 
-    if st.button("Find Products"):
-        ingredients = product_input.split(",")
+    def run_search(ingredients_text):
+        ingredients = [i.strip() for i in ingredients_text.split(",")]
+        print(ingredients)
         products = get_available_ingredients(ingredients, language)
         st.session_state.available_ingredients = products
         st.session_state.search_done = True
-        print('available_ingredients:', st.session_state.available_ingredients)
 
-    if st.session_state.search_done:
-        if st.session_state.available_ingredients:
+
+    cols = st.columns(3)
+    with cols[0]:
+        if st.button("Cucumber,nori,gohan ,salt , soy sauce , shiso leaves" if language == "English" else "きゅうり, 海苔, ごはん, 塩, しょうゆ, 大葉"):
+            input_prompt = ("Cucumber , nori , gohan , salt , soy sauce , shiso leaves" if language == "English" else "きゅうり, 海苔, ごはん, 塩, しょうゆ, 大葉")
+            run_search(input_prompt)
+
+    with cols[1]:
+        if st.button("Lemon juice, Water ,Matcha ,Walnuts , Potatoes , Broccoli" if language == "English" else "レモン汁, 水, 抹茶, くるみ[ロースト], じゃがいも ,ブロッコリー"):
+            input_prompt = ("Lemon juice, Water ,Matcha ,Walnuts , Potatoes , Broccoli" if language == "English" else "レモン汁, 水, 抹茶, くるみ[ロースト], じゃがいも ,ブロッコリー")
+            run_search(input_prompt)
+            
+    with cols[2]:
+        if st.button("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 ,  絹豆腐"):
+            input_prompt = ("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 ,  絹豆腐")
+            run_search(input_prompt)
+
+    product_input = st.text_input("Enter comma separated list of products or ingredients:")
+    
+    if st.button("Find Products"):
+        run_search(product_input)
+
+    if st.session_state.get("search_done"):
+        if st.session_state.get("available_ingredients"):
             render_matching_products(st.session_state.available_ingredients)
         else:
             st.warning("No matching product found.")
-
-    if st.session_state.cart_items:
+    if st.session_state.get("cart_items"):
         render_cart()

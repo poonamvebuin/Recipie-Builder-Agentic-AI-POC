@@ -16,7 +16,7 @@ st.set_page_config(page_title="Recipe Builder", layout="centered")
 
 # Sidebar - Language
 st.sidebar.header("🌐 Language Preferences")
-language_options = ["English", "Japanese"]
+language_options = ["Japanese", "English"]
 language = st.sidebar.selectbox(
     "Choose your preferred language:", language_options, index=0
 )

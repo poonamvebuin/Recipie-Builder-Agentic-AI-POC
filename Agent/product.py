@@ -140,10 +140,8 @@ def get_available_ingredients(recipe_ingredients, language):
     Raises:
         Exception: If translation fails, the function will return cleaned ingredients without translation.
     """
-
     if isinstance(recipe_ingredients, list):
         recipe_ingredients = "\n".join(recipe_ingredients)
-
     if isinstance(recipe_ingredients, str):
         cleaned_text = re.sub(r"\n+", "\n", recipe_ingredients)
         raw_ingredients = [i.strip() for i in cleaned_text.split("\n") if i.strip()]

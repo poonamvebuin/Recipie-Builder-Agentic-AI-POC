@@ -197,11 +197,11 @@ def get_recipe_suggestions(language: str):
     st.title("🧑‍🍳 Chat with Recipe Assistant")
     country, city, weather_data = render_location_and_weather_ui()
     render_preferences_ui()
-    display_chat_history()
+    
+    user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
     # 🔖 Quick Prompt Buttons
-    st.markdown("### 🔖 Quick Prompts")
+    st.markdown("### 🔎 Most Popular Searches")
 
-    # Dynamic columns
     cols = st.columns(5)
 
     with cols[0]:
@@ -262,6 +262,9 @@ def get_recipe_suggestions(language: str):
                 else "トレーニング後に食べる高タンパクな和食が知りたいです。"
             )
 
+
+    st.markdown("---")
+    display_chat_history()
     user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
     if "chat_input_prompt" in st.session_state:
         user_input = st.session_state.chat_input_prompt
@@ -469,7 +472,7 @@ def get_recipe_suggestions(language: str):
                             RECIPE SUGGESTIONS:
                                 Recommended Dish: [Japanese name] (English name)  
                                 Rating: ★★★★★ X.X (based on Y reviews)  
-                                What people say: “Sample user comment”
+                                What people say: "Sample user comment"
                         IMPORTANT:
                         - DO NOT make up new dishes or comments.
                         - DO NOT summarize vaguely — use real reviews.
@@ -698,9 +701,7 @@ def get_recipe_suggestions(language: str):
             r"\s*\(.*?\)", "", st.session_state.final_dish_choice
         )
         cleaned_dish_name = re.sub(r"^\s*-*\s*", "", cleaned_dish_name)
-
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
-
         if recipe_from_json:
             st.session_state.raw_japanese_ingredients = recipe_from_json.get(
                 "ingredients", []
@@ -711,14 +712,13 @@ def get_recipe_suggestions(language: str):
                 f"{preferences_context}\n\n"
                 f"Recipe: {recipe_from_json}\n\n"
                 f"Adjust the ingredients, times and quantities proportionally to match for given {conversation_history} servings. "
-                f"Ensure that all quantities are modified proportionally and the INGREDIANTS appear on separate lines. "
+                f"Ensure that all quantities are modified proportionally "
                 f"Do not omit any important details in the translation."
             )
             run_response: Iterator[RunResponse] = st.session_state.recipe_agent.run(
                 prompt, stream=True
             )
             recipe = run_response.content
-
             st.title("🍽️ Deliciously Recipe 🍽️")
 
             if recipe.image_url and recipe.image_url.startswith(
@@ -743,8 +743,10 @@ def get_recipe_suggestions(language: str):
                 st.subheader(f"**{key}:**")
                 st.write(value)
             st.subheader("Ingredients:")
-            for i, value in enumerate(recipe.ingredients.split("\n"), start=1):
-                st.write(f"{i}. {value}")
+           
+            normalized_ingredients = re.sub(r'\n+', '\n', recipe.ingredients.strip())
+            for i, value in enumerate(normalized_ingredients.split('\n'), start=1):
+                st.write(f"{i}. {value.strip()}")
 
             st.subheader("Instructions:")
 
