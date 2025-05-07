@@ -12,10 +12,14 @@ def display_welcome_message(language):
 
     Returns:
         None: This function does not return a value. It directly interacts with the Streamlit interface to display messages and buttons.
-    """
-
+    """ 
+    
+    
     with st.chat_message("assistant"):
         if language == "English":
+
+            with st.expander("👀 Click to view how this app works"):
+                st.image("flow_image_en.png", caption="App Flow: Recipe Creation or Product Finder")
             st.write("**Welcome to your Personal cooking Assistant! 🍽️**")
             st.write(
                 "I'm here to help you discover the perfect recipes or find exactly what you need for your kitchen. Let's start creating something delicious together! 😄"
@@ -50,6 +54,8 @@ def display_welcome_message(language):
                     st.session_state.mode = "product"
 
         elif language == "Japanese":
+            with st.expander("👀 このアプリの動作を見るにはクリックしてください"):
+                st.image("flow_image_jp.png", caption="アプリの流れ レシピ作成または商品検索")
             st.write("**ようこそ、あなたのパーソナル料理アシスタントへ！🍽️**")
             st.write(
                 "私は、完璧なレシピを見つけるお手伝いや、キッチンに必要なものを見つけるお手伝いをします。一緒においしいものを作り始めましょう！😄"
