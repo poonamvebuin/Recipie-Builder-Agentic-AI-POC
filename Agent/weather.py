@@ -152,16 +152,12 @@ def get_weather(city: str, country="JP"):
     # print('-----------response', response.text, response.status_code)
     if response.status_code == 200:
         data = response.json()
-        # weather = {
-        #     "temperature": data["main"]["temp"],
-        #     "description": data["weather"][0]["description"],
-        #     "humidity": data["main"]["humidity"],
-        # }
         weather = {
-            "気温": data["main"]["temp"],
-            "天気の説明": data["weather"][0]["description"],
-            "湿度": data["main"]["humidity"],
+            "temperature": data["main"]["temp"],
+            "description": data["weather"][0]["description"],
+            "humidity": data["main"]["humidity"],
         }
+        
 
         return weather
     else:

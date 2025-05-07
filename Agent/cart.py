@@ -129,9 +129,9 @@ def display_cart_summary():
         item_total_with_tax = item["Total_Price_with_Tax"]
 
         line = (
-            f"{item['Quantity']} x {item['Product_name']} \n"
-            # f"Price: {item['Price']} 円\n"
-            f"Price with Tax: {item['Price_with_Tax']} 円"
+            f"{item['Quantity']} x {item['Product_name']}\n"
+            f"価格: {item['Price']} 円\n"
+            f"税込価格: {item['Price_with_Tax']} 円"
         )
         lines.append(line)
 
@@ -140,5 +140,5 @@ def display_cart_summary():
 
     lines.append("---")
     # lines.append(f"**Total price: {total_base} 円**")
-    lines.append(f"**Total price: {total_with_tax} 円(税込)**")
+    lines.append(f"**税込み総額: {total_with_tax} 円(税込)**")
     return lines
