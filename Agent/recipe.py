@@ -209,7 +209,10 @@ def search_for_recipe_exact(title: str):
                 "cuisine_type": recipe.get("source", None),
                 "total_time": recipe.get("cooking_time", None),
                 "ingredients": "\n".join(
-                    [ingredient["name"]+str(ingredient.get("quantity")) for ingredient in recipe.get("ingredients", [])]
+                    [
+                        ingredient["name"] + str(ingredient.get("quantity"))
+                        for ingredient in recipe.get("ingredients", [])
+                    ]
                 ),
                 "instructions": processed_instructions,
                 "serving_size": serving_size,

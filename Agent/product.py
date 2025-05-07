@@ -105,19 +105,18 @@ def find_similar_products(cleaned_ingredients, products_db, threshold=85):
 
     # Normalize product names
     product_name_map = {
-        re.sub(r"\s+", "", product[0].lower()): product
-        for product in products_db
+        re.sub(r"\s+", "", product[0].lower()): product for product in products_db
     }
 
     for ingredient in cleaned_ingredients:
         normalized_ingredient = re.sub(r"\s+", "", ingredient.lower())
-        print("-----ingredient", normalized_ingredient)
+        print("normalized_ingredient:", normalized_ingredient)
 
         best_match = process.extractOne(
             normalized_ingredient, list(product_name_map.keys()), scorer=fuzz.ratio
         )
 
-        print("-----best_match", best_match)
+        print("best_match:", best_match)
         if best_match and best_match[1] >= threshold:
             matched_product = product_name_map[best_match[0]]
             results.add(tuple(matched_product))
@@ -128,28 +127,26 @@ def find_similar_products(cleaned_ingredients, products_db, threshold=85):
 @st.cache_data(show_spinner="🔍 Finding ingredients...")
 def get_available_ingredients(recipe_ingredients, language):
     """Get available ingredients based on the provided recipe ingredients and language.
-    
+
     This function processes a list or string of recipe ingredients, cleans and translates them if necessary, and then finds similar products from a product database. The results are returned in a structured format.
-    
+
     Args:
         recipe_ingredients (list or str): A list of ingredients or a string containing ingredients separated by newlines.
         language (str): The language in which the ingredients should be processed. Currently supports English and Japanese.
-    
+
     Returns:
         list of dict: A list of dictionaries containing product information, including product name, tax, price, and weight. The structure of the returned dictionaries depends on the specified language.
-        
+
     Raises:
         Exception: If translation fails, the function will return cleaned ingredients without translation.
     """
-    
+
     if isinstance(recipe_ingredients, list):
         recipe_ingredients = "\n".join(recipe_ingredients)
 
     if isinstance(recipe_ingredients, str):
         cleaned_text = re.sub(r"\n+", "\n", recipe_ingredients)
-        raw_ingredients = [
-            i.strip() for i in cleaned_text.split("\n") if i.strip()
-        ]
+        raw_ingredients = [i.strip() for i in cleaned_text.split("\n") if i.strip()]
     else:
         raw_ingredients = []
 
@@ -167,17 +164,17 @@ def get_available_ingredients(recipe_ingredients, language):
     else:
         translated_ingredients = cleaned_ingredients
 
-    print('-----translated_ingredients', translated_ingredients)
+    print("translated_ingredients:", translated_ingredients)
     products_db = load_product_db()
     matches = find_similar_products(translated_ingredients, products_db)
-
+    print("matches:", matches)
     if language.lower() != "japanese":
         return [
             {
                 "Product_name": translate_word(match[0], "ja", "en"),
                 "Tax": match[1],
                 "Price": f"{match[2]}",
-                "Weight": f"{match[5]} {match[6]}",
+                "Weight": f"{match[3]} {match[4]}",
             }
             for match in matches
         ]

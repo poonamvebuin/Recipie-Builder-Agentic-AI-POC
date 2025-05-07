@@ -35,11 +35,13 @@ def get_product_suggestions(language):
         products = get_available_ingredients(ingredients, language)
         st.session_state.available_ingredients = products
         st.session_state.search_done = True
-        print('---------st.session_state.available_ingredients', st.session_state.available_ingredients)
+        print('available_ingredients:', st.session_state.available_ingredients)
 
-    if st.session_state.search_done and st.session_state.available_ingredients:
-        render_matching_products(st.session_state.available_ingredients)
-    else:
-        st.warning("No matching product found.")
+    if st.session_state.search_done:
+        if st.session_state.available_ingredients:
+            render_matching_products(st.session_state.available_ingredients)
+        else:
+            st.warning("No matching product found.")
+
     if st.session_state.cart_items:
         render_cart()
