@@ -27,10 +27,15 @@ def render_location_and_weather_ui():
             - weather_data (dict or None): A dictionary containing weather data, or None if no weather data is available.
     """
 
-    st.sidebar.header("📍 Your Location")
+    # st.sidebar.header("📍 Your Location")
+    st.sidebar.header("📍 あなたの場所")
+    # country = st.sidebar.selectbox(
+    #     "Enter your country:", ["None", "India", "Japan"], index=0
+    # )
     country = st.sidebar.selectbox(
-        "Enter your country:", ["None", "India", "Japan"], index=0
-    )
+    "国を選択してください：", ["なし", "インド", "日本"], index=0
+)
+
     city, weather_data = None, None
     if country != "None":
         cities = get_cities_in_country(country)
@@ -167,7 +172,8 @@ def handle_product_matching_and_cart(raw_japanese_ingredients, language):
 
     st.title("🛒 Product Finder for Ingredients")
 
-    if st.button("Find Available Ingredients"):
+    # if st.button("Find Available Ingredients")
+    if st.button("利用可能な材料を探す"):
         products = get_available_ingredients(raw_japanese_ingredients, language)
         st.session_state.available_ingredients = products
         st.session_state.search_done = True
@@ -194,13 +200,16 @@ def get_recipe_suggestions(language: str):
         None: The function interacts with the user through a chat interface and does not return a value.
     """
 
-    st.title("🧑‍🍳 Chat with Recipe Assistant")
+    # st.title("🧑‍🍳 Chat with Recipe Assistant")
+    st.title("🧑‍🍳 レシピアシスタントとチャット")
     country, city, weather_data = render_location_and_weather_ui()
     render_preferences_ui()
     
-    user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
+    # user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
+    user_input = st.chat_input("レシピの提案を求める", key="chat_input")
     # 🔖 Quick Prompt Buttons
-    st.markdown("### 🔎 Most Popular Searches")
+    # st.markdown("### 🔎 Most Popular Searches")
+    st.markdown("### 🔎 人気の検索")
 
     cols = st.columns(5)
 

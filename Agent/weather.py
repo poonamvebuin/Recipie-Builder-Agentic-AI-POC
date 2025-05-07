@@ -17,54 +17,102 @@ API_KEY = os.getenv("API_KEY")
 BASE_URL = os.getenv("BASE_URL")
 
 
+# japan_cities = [
+#     "None",
+#     "Tokyo",
+#     "Osaka",
+#     "Kyoto",
+#     "Hokkaido",
+#     "Fukuoka",
+#     "Sapporo",
+#     "Nagasaki",
+#     "Kobe",
+#     "Yokohama",
+#     "Hiroshima",
+#     "Nara",
+#     "Sendai",
+#     "Kamakura",
+#     "Shizuoka",
+#     "Kochi",
+#     "Chiba",
+#     "Fukushima",
+#     "Okinawa",
+#     "Kagawa",
+#     "Gifu",
+# ]
+
 japan_cities = [
-    "None",
-    "Tokyo",
-    "Osaka",
-    "Kyoto",
-    "Hokkaido",
-    "Fukuoka",
-    "Sapporo",
-    "Nagasaki",
-    "Kobe",
-    "Yokohama",
-    "Hiroshima",
-    "Nara",
-    "Sendai",
-    "Kamakura",
-    "Shizuoka",
-    "Kochi",
-    "Chiba",
-    "Fukushima",
-    "Okinawa",
-    "Kagawa",
-    "Gifu",
+    "なし",
+    "東京",
+    "大阪",
+    "京都",
+    "北海道",
+    "福岡",
+    "札幌",
+    "長崎",
+    "神戸",
+    "横浜",
+    "広島",
+    "奈良",
+    "仙台",
+    "鎌倉",
+    "静岡",
+    "高知",
+    "千葉",
+    "福島",
+    "沖縄",
+    "香川",
+    "岐阜",
 ]
+
+
+# india_cities = [
+#     "None",
+#     "Delhi",
+#     "Mumbai",
+#     "Bangalore",
+#     "Kolkata",
+#     "Chennai",
+#     "Hyderabad",
+#     "Ahmedabad",
+#     "Pune",
+#     "Jaipur",
+#     "Lucknow",
+#     "Kanpur",
+#     "Nagpur",
+#     "Indore",
+#     "Chandigarh",
+#     "Bhopal",
+#     "Coimbatore",
+#     "Visakhapatnam",
+#     "Patna",
+#     "Surat",
+#     "Vadodara",
+# ]
 
 india_cities = [
-    "None",
-    "Delhi",
-    "Mumbai",
-    "Bangalore",
-    "Kolkata",
-    "Chennai",
-    "Hyderabad",
-    "Ahmedabad",
-    "Pune",
-    "Jaipur",
-    "Lucknow",
-    "Kanpur",
-    "Nagpur",
-    "Indore",
-    "Chandigarh",
-    "Bhopal",
-    "Coimbatore",
-    "Visakhapatnam",
-    "Patna",
-    "Surat",
-    "Vadodara",
+    "なし",
+    "デリー",
+    "ムンバイ",
+    "バンガロール",
+    "コルカタ",
+    "チェンナイ",
+    "ハイデラバード",
+    "アーメダバード",
+    "プネー",
+    "ジャイプール",
+    "ルクナウ",
+    "カーンプル",
+    "ナグプール",
+    "インドール",
+    "チャンディーガル",
+    "ボーパール",
+    "コインバトール",
+    "ヴィシャーカパトナム",
+    "パトナ",
+    "スーラト",
+    "バドーダラー",
 ]
-
 
 def get_cities_in_country(country_name: str):
     """Retrieve a list of cities in a specified country.
@@ -80,9 +128,9 @@ def get_cities_in_country(country_name: str):
               or an empty list if the country name is not recognized.
     """
 
-    if country_name.lower() == "japan":
+    if country_name.lower() == "日本":
         return japan_cities
-    elif country_name.lower() == "india":
+    elif country_name.lower() == "インド":
         return india_cities
     else:
         return []
@@ -104,11 +152,17 @@ def get_weather(city: str, country="JP"):
     # print('-----------response', response.text, response.status_code)
     if response.status_code == 200:
         data = response.json()
+        # weather = {
+        #     "temperature": data["main"]["temp"],
+        #     "description": data["weather"][0]["description"],
+        #     "humidity": data["main"]["humidity"],
+        # }
         weather = {
-            "temperature": data["main"]["temp"],
-            "description": data["weather"][0]["description"],
-            "humidity": data["main"]["humidity"],
+            "気温": data["main"]["temp"],
+            "天気の説明": data["weather"][0]["description"],
+            "湿度": data["main"]["humidity"],
         }
+
         return weather
     else:
         return None
