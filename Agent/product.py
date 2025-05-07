@@ -152,7 +152,8 @@ def get_available_ingredients(recipe_ingredients, language):
         sub_ing for i in raw_ingredients for sub_ing in clean_ingredient(i)
     ]
 
-    if language.lower() != "japanese":
+    # if language.lower() != "japanese":
+    if language.lower() != "日本語":
         try:
             translated_ingredients = [
                 translate_word(i, "en", "ja") for i in cleaned_ingredients
@@ -166,7 +167,8 @@ def get_available_ingredients(recipe_ingredients, language):
     products_db = load_product_db()
     matches = find_similar_products(translated_ingredients, products_db)
     print("matches:", matches)
-    if language.lower() != "japanese":
+    # if language.lower() != "japanese":
+    if language.lower() != "日本語":
         return [
             {
                 "Product_name": translate_word(match[0], "ja", "en"),

@@ -15,10 +15,16 @@ from streamlit_app.streamlit_welcom import display_welcome_message
 st.set_page_config(page_title="Recipe Builder", layout="centered")
 
 # Sidebar - Language
-st.sidebar.header("🌐 Language Preferences")
-language_options = ["Japanese", "English"]
+# st.sidebar.header("🌐 Language Preferences")
+# language_options = ["Japanese", "English"]
+# language = st.sidebar.selectbox(
+#     "Choose your preferred language:", language_options, index=0
+# )
+
+st.sidebar.header("🌐 言語設定")
+language_options = ["日本語", "英語"]
 language = st.sidebar.selectbox(
-    "Choose your preferred language:", language_options, index=0
+    "希望の言語を選択してください：", language_options, index=0
 )
 
 display_welcome_message(language)

@@ -43,7 +43,8 @@ def render_matching_products(products: list[dict]):
             step=1,
             key=f"qty_{i}",
         )
-        if st.button(f"Add to Cart", key=f"add_{i}"):
+        # if st.button(f"Add to Cart", key=f"add_{i}"):
+        if st.button(f"カートに入れる", key=f"add_{i}"):
             add_item_to_cart(product, quantity)
             st.session_state.last_added = product["Product_name"]
 
@@ -75,5 +76,6 @@ def render_cart():
 
         cart_names = [item["Product_name"] for item in st.session_state.cart_items]
         remove_choice = st.selectbox("Remove item from cart:", cart_names)
-        if st.button("Remove selected item"):
+        # if st.button("Remove selected item"):
+        if st.button("選択した項目を削除する"):
             remove_item_from_cart(remove_choice)

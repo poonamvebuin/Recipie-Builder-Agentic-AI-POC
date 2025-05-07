@@ -21,8 +21,11 @@ def get_product_suggestions(language):
         Call this function within a Streamlit application to enable product searching and cart management.
     """
 
-    st.title("🛒 Product Finder")
-    st.markdown("### 🔎 Most Popular Searches")
+    # st.title("🛒 Product Finder")
+    # st.markdown("### 🔎 Most Popular Searches")
+
+    st.title("🛒 商品検索")
+    st.markdown("### 🔎 人気の検索")
 
     def run_search(ingredients_text):
         ingredients = [i.strip() for i in ingredients_text.split(",")]
@@ -48,15 +51,18 @@ def get_product_suggestions(language):
             input_prompt = ("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 ,  絹豆腐")
             run_search(input_prompt)
 
-    product_input = st.text_input("Enter comma separated list of products or ingredients:")
+    # product_input = st.text_input("Enter comma separated list of products or ingredients:")
+    product_input = st.text_input("商品または材料をカンマ区切りで入力してください：")
     
-    if st.button("Find Products"):
+    # if st.button("Find Products"):
+    if st.button("商品を探す"):
         run_search(product_input)
 
     if st.session_state.get("search_done"):
         if st.session_state.get("available_ingredients"):
             render_matching_products(st.session_state.available_ingredients)
         else:
-            st.warning("No matching product found.")
+            # st.warning("No matching product found.")
+            st.warning("一致する商品が見つかりませんでした。")
     if st.session_state.get("cart_items"):
         render_cart()
