@@ -50,7 +50,8 @@ def render_matching_products(products: list[dict]):
             st.session_state.last_added = product["Product_name"]
 
     if st.session_state.last_added:
-        st.success(f"✅ {st.session_state.last_added} added to cart!")
+        # st.success(f"✅ {st.session_state.last_added} added to cart!")
+        st.success(f"✅ {st.session_state.last_added} カートに追加!")
         st.session_state.last_added = None
 
 
@@ -77,7 +78,8 @@ def render_cart():
             st.markdown(item_line)
 
         cart_names = [item["Product_name"] for item in st.session_state.cart_items]
-        remove_choice = st.selectbox("Remove item from cart:", cart_names)
+        # remove_choice = st.selectbox("Remove item from cart:", cart_names)
+        remove_choice = st.selectbox("カートから商品を削除する:", cart_names)
         # if st.button("Remove selected item"):
         if st.button("選択した項目を削除する"):
             remove_item_from_cart(remove_choice)
