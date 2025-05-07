@@ -53,9 +53,10 @@ def get_product_suggestions(language):
     if st.button("Find Products"):
         run_search(product_input)
 
-    if st.session_state.get("search_done") and st.session_state.get("available_ingredients"):
-        render_matching_products(st.session_state.available_ingredients)
-    elif st.session_state.get("search_done"):
-        st.warning("No matching product found.")
+    if st.session_state.get("search_done"):
+        if st.session_state.get("available_ingredients"):
+            render_matching_products(st.session_state.available_ingredients)
+        else:
+            st.warning("No matching product found.")
     if st.session_state.get("cart_items"):
         render_cart()

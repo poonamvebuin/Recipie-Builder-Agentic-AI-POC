@@ -628,7 +628,7 @@ def get_recipe_suggestions(language: str):
                 match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
                 if match:
                     dish_name = clean_recipe_name(match.group(1).strip())
-                    # print('--------dish_name', dish_name)
+                    print('dish_name:', dish_name)
                     dish_name = re.sub(r"\s*\(.*?\)", "", dish_name).strip()
                     if st.button(cleaned_name):
                         st.session_state.final_dish_choice = cleaned_name

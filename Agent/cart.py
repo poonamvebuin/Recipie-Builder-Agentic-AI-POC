@@ -25,19 +25,19 @@ def parse_price(price_str):
 
 def add_item_to_cart(product, quantity):
     """Adds an item to the shopping cart, updating the quantity and price if the item already exists.
-    
+
     Args:
         product (dict): A dictionary containing product details, including 'Product_name', 'Price', 'Tax', and 'Weight'.
         quantity (int): The quantity of the product to add to the cart.
-    
+
     Returns:
         None: This function modifies the session state directly and does not return a value.
-    
+
     Raises:
         KeyError: If the product dictionary does not contain the required keys.
         TypeError: If the quantity is not an integer.
     """
-    
+
     existing = next(
         (
             item
@@ -73,12 +73,12 @@ def add_item_to_cart(product, quantity):
 
 def remove_item_from_cart(product_name):
     """Removes an item from the shopping cart based on the product name.
-    
+
     This function checks if the specified product is in the user's cart. If the product is found and its quantity is greater than one, the function decreases the quantity by one and updates the total price and total price with tax. If the quantity is one, the product is removed from the cart entirely. If the product is not found, a warning message is displayed.
-    
+
     Args:
         product_name (str): The name of the product to be removed from the cart.
-    
+
     Returns:
         None: This function does not return a value. It modifies the session state directly and triggers a rerun of the Streamlit app.
     """
@@ -110,11 +110,11 @@ def remove_item_from_cart(product_name):
 
 def display_cart_summary():
     """Displays a summary of the shopping cart, including item details and total prices.
-    
+
     This function iterates through the items in the shopping cart stored in the session state,
     calculating the total base price and total price with tax. It formats the details of each
     item and appends them to a list, which is returned at the end.
-    
+
     Returns:
         list: A list of strings representing the cart summary, including each item's quantity,
         product name, price, price with tax, and the total prices.

@@ -173,6 +173,18 @@ def get_suggested_titles_with_reviews(titles, recipe_data_override=None):
 
 
 def get_budget_friendly_recipes(recipe_titles, recipe_data):
+    """Get budget-friendly recipes based on provided titles.
+    
+    Args:
+        recipe_titles (list of str): A list of recipe titles to filter.
+        recipe_data (list of dict): A list of recipe data dictionaries, each containing 
+                                     a title and a cost estimate.
+    
+    Returns:
+        list of dict: A list of dictionaries containing the titles and cost estimates 
+                       of the recipes that match the provided titles.
+    """
+
     filtered = []
 
     for recipe in recipe_data:
@@ -185,7 +197,21 @@ def get_budget_friendly_recipes(recipe_titles, recipe_data):
     # filtered.sort(key=lambda r: r.get("cost_estimate", float("inf")))
     return filtered
 
+
 def get_ingrediants_based_recipes(recipe_titles, recipe_data):
+    """Retrieve ingredients for specified recipes.
+    
+    Args:
+        recipe_titles (list of str): A list of recipe titles to filter.
+        recipe_data (list of dict): A list of recipe data, where each recipe is represented as a dictionary
+            containing at least a 'title' and 'ingredients' key.
+    
+    Returns:
+        list of dict: A list of dictionaries, each containing the 'title' and 'ingredients' of the recipes
+            that match the provided titles. Each dictionary in the list corresponds to a recipe that was found
+            in the recipe_data.
+    """
+
     filtered = []
 
     for recipe in recipe_data:
@@ -198,15 +224,11 @@ def get_ingrediants_based_recipes(recipe_titles, recipe_data):
     # filtered.sort(key=lambda r: len(r.get("ingredients", [])))
     return filtered
 
-budget_friendly_recipes = get_budget_friendly_recipes(
-    recipe_titles, recipe_data
-)
-# print("-------------budget_friendly_recipes", budget_friendly_recipes)
 
-ingrediants_based_recipes = get_ingrediants_based_recipes(
-    recipe_titles, recipe_data
-)
-# print("-------------ingrediants_based_recipes", ingrediants_based_recipes)
+budget_friendly_recipes = get_budget_friendly_recipes(recipe_titles, recipe_data)
+
+ingrediants_based_recipes = get_ingrediants_based_recipes(recipe_titles, recipe_data)
+
 
 def get_supervisor_agent():
     """Get a configured SupervisorAgent for handling Japanese recipe inquiries.
