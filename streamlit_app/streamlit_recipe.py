@@ -47,31 +47,16 @@ def render_location_and_weather_ui():
     if country != "なし":
         cities = get_cities_in_country(country)
         if cities:
-<<<<<<< Updated upstream
             city = st.sidebar.selectbox("都市を選ぶ", cities)
             # city = st.sidebar.selectbox("Choose a city", cities)
-            if city and city != "None":
-                weather_data = get_weather(city, country)
+            if city and city != "なし":
+                country_code = country_code_map.get(country, "JP")
+                weather_data = get_weather(city, country_code)
                 if weather_data:
                     # st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
                     st.sidebar.write(f"🌡️ 温度: {weather_data['temperature']}°C")
                     # st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
                     st.sidebar.write(f"☁️ 天気: {weather_data['description']}")
-=======
-            city = st.sidebar.selectbox("都市を選んでください", cities)
-            if city and city != "なし":
-                country_code = country_code_map.get(country, "JP")
-                weather_data = get_weather(city, country_code)
-
-                if weather_data and "temperature" in weather_data:
-                    st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
-                    st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
-                elif "error" in weather_data:
-                    st.sidebar.error(f"⚠️ 天気取得エラー: {weather_data['error']}")
-                else:
-                    st.sidebar.warning("⚠️ 天気データが利用できません。")
-
->>>>>>> Stashed changes
     return country, city, weather_data
 
 
