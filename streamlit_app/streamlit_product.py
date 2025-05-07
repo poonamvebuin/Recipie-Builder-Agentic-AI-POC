@@ -29,7 +29,6 @@ def get_product_suggestions(language):
 
     def run_search(ingredients_text):
         ingredients = [i.strip() for i in ingredients_text.split(",")]
-        print(ingredients)
         products = get_available_ingredients(ingredients, language)
         st.session_state.available_ingredients = products
         st.session_state.search_done = True
@@ -39,21 +38,19 @@ def get_product_suggestions(language):
     with cols[0]:
         if st.button("Cucumber,nori,gohan ,salt , soy sauce , shiso leaves" if language == "English" else "きゅうり, 海苔, ごはん, 塩, しょうゆ, 大葉"):
             input_prompt = ("Cucumber , nori , gohan , salt , soy sauce , shiso leaves" if language == "English" else "きゅうり, 海苔, ごはん, 塩, しょうゆ, 大葉")
-            run_search(input_prompt)
+            st.session_state.product_input = input_prompt 
 
     with cols[1]:
         if st.button("Lemon juice, Water ,Matcha ,Walnuts , Potatoes , Broccoli" if language == "English" else "レモン汁, 水, 抹茶, くるみ[ロースト], じゃがいも ,ブロッコリー"):
             input_prompt = ("Lemon juice, Water ,Matcha ,Walnuts , Potatoes , Broccoli" if language == "English" else "レモン汁, 水, 抹茶, くるみ[ロースト], じゃがいも ,ブロッコリー")
-            run_search(input_prompt)
-            
+            st.session_state.product_input = input_prompt  
+
     with cols[2]:
         if st.button("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 ,  絹豆腐"):
-            input_prompt = ("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 ,  絹豆腐")
-            run_search(input_prompt)
-
+            input_prompt = ("Green onion , Vermicelli , Chicken meat , Sesame oil , Silk tofu" if language == "English" else "青ネギ , 春雨 ,  鶏ささみ ,  ごま油 , 絹豆腐")
+            st.session_state.product_input = input_prompt 
     # product_input = st.text_input("Enter comma separated list of products or ingredients:")
-    product_input = st.text_input("商品または材料をカンマ区切りで入力してください：")
-    
+    product_input = st.text_input("商品または材料をカンマ区切りで入力してください：", value=st.session_state.get("product_input", ""))
     # if st.button("Find Products"):
     if st.button("商品を探す"):
         run_search(product_input)
