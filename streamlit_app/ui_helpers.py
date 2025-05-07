@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 from Agent.cart import add_item_to_cart, display_cart_summary, remove_item_from_cart
 
@@ -25,10 +26,14 @@ def render_matching_products(products: list[dict]):
 
     st.subheader("Matching Products:")
     for i, product in enumerate(products):
-        st.subheader(product["Product_name"])
-        st.write(f"Price with Tax: {product['Tax']}")
+        tax_string = product["Tax"]
+        parts = tax_string.split('%')
+        formatted_tax_price = parts[1].strip() if len(parts) > 1 else tax_string
+
+        st.subheader(f"{product['Product_name']}({product['Weight']})") 
+        # st.write(product['Weight'])
+        st.write(f"Price with Tax: {formatted_tax_price}(税込)")
         st.write(f"Price: {product['Price']}")
-        st.write(f"Weight: {product['Weight']}")
 
         quantity = st.number_input(
             f"Quantity for {product['Product_name']}",
@@ -67,7 +72,7 @@ def render_cart():
     if st.session_state.cart_items:
         st.title("🧺 Your Cart:")
         for item_line in display_cart_summary():
-            st.write(item_line)
+            st.markdown(item_line)
 
         cart_names = [item["Product_name"] for item in st.session_state.cart_items]
         remove_choice = st.selectbox("Remove item from cart:", cart_names)
