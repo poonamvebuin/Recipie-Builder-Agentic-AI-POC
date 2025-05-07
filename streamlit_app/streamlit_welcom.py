@@ -16,7 +16,8 @@ def display_welcome_message(language):
     
     
     with st.chat_message("assistant"):
-        if language == "English":
+        # if language == "English":
+        if language == "英語":
 
             with st.expander("👀 Click to view how this app works"):
                 st.image("flow_image_en.png", caption="App Flow: Recipe Creation or Product Finder")
@@ -37,7 +38,8 @@ def display_welcome_message(language):
             col1, col2 = st.columns([1, 1])
             with col1:
                 if st.button(
-                    "Chat with Recipe Assistant",
+                    # "Chat with Recipe Assistant",
+                    "レシピアシスタントとチャット",
                     key="recipe_creator_button",
                     help="Click to start creating a recipe",
                     use_container_width=True,
@@ -46,14 +48,15 @@ def display_welcome_message(language):
 
             with col2:
                 if st.button(
-                    "Product Finder",
+                    # "Product Finder",
+                    "製品検索",
                     key="product_finder_button",
                     help="Click to find products",
                     use_container_width=True,
                 ):
                     st.session_state.mode = "product"
 
-        elif language == "Japanese":
+        elif language == "日本語":
             with st.expander("👀 このアプリの動作を見るにはクリックしてください"):
                 st.image("flow_image_jp.png", caption="アプリの流れ レシピ作成または商品検索")
             st.write("**ようこそ、あなたのパーソナル料理アシスタントへ！🍽️**")
