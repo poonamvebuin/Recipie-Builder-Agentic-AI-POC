@@ -663,10 +663,13 @@ def get_recipe_suggestions(language: str):
             st.session_state.ready_for_recipe = False
 
     if st.session_state.dish_suggestions:
-        st.subheader("🍽️ Suggested Recipes:")
+        # st.subheader("🍽️ Suggested Recipes:")
+        st.subheader("🍽️ おすすめレシピ:")
         for suggestion in st.session_state.dish_suggestions:
-            if suggestion.startswith("Recommended Dish:"):
+            if suggestion.startswith("おすすめ料理:"):
+            # if suggestion.startswith("Recommended Dish:"):
                 match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
+                match = re.search(r"おすすめ料理\s*(.+)", suggestion)
                 if match:
                     dish_name = clean_recipe_name(match.group(1).strip())
                     print('dish_name:', dish_name)
@@ -705,35 +708,52 @@ def get_recipe_suggestions(language: str):
             preferences = st.session_state.preferences
             preferences_list = []
 
-            if preferences["taste"] and preferences["taste"] != "No Preference":
-                preferences_list.append(f"- Taste: {preferences['taste']}")
+            # if preferences["taste"] and preferences["taste"] != "No Preference":
+            #     preferences_list.append(f"- Taste: {preferences['taste']}")
+            if preferences["taste"] and preferences["taste"] != "好みなし":
+                preferences_list.append(f"- 味覚: {preferences['taste']}")
 
             if (
                 preferences["cooking_time"]
-                and preferences["cooking_time"] != "No Preference"
+                and preferences["cooking_time"] != "好みなし"
             ):
                 preferences_list.append(
-                    f"- Cooking Time: {preferences['cooking_time']}"
+                    f"- 調理時間: {preferences['cooking_time']}"
                 )
+            # if (
+            #     preferences["cooking_time"]
+            #     and preferences["cooking_time"] != "No Preference"
+            # ):
+            #     preferences_list.append(
+            #         f"- Cooking Time: {preferences['cooking_time']}"
+            #     )
 
             if preferences["ingredients"]:
                 if preferences["ingredients"]:
                     preferences_list.append(
-                        f"- Ingredients to include: {', '.join(preferences['ingredients'])}"
+                        f"- 含まれる成分: {', '.join(preferences['ingredients'])}"
                     )
+                    # preferences_list.append(
+                    #     f"- Ingredients to include: {', '.join(preferences['ingredients'])}"
+                    # )
 
             if preferences["allergies"]:
                 if preferences["allergies"]:
                     preferences_list.append(
-                        f"- Allergies/Avoid: {', '.join(preferences['allergies'])}"
+                        f"- アレルギー/避ける: {', '.join(preferences['allergies'])}"
                     )
+                    # preferences_list.append(
+                    #     f"- Allergies/Avoid: {', '.join(preferences['allergies'])}"
+                    # )
 
             if preferences["diet"] and preferences["diet"] != "No Preference":
-                preferences_list.append(f"- Diet: {preferences['diet']}")
+                preferences_list.append(f"- ダイエット: {preferences['diet']}")
+                # preferences_list.append(f"- Diet: {preferences['diet']}")
 
             # Join all valid preferences together
             if preferences_list:
-                preferences_context = "User Preferences:\n" + "\n".join(
+                # preferences_context = "User Preferences:\n" + "\n".join(
+                preferences_context = "ユーザー設定:\n" + "\n".join(
                     preferences_list
                 )
 
@@ -767,51 +787,63 @@ def get_recipe_suggestions(language: str):
             ):
                 st.image(recipe.image_url, caption=recipe.recipe_title)
             elif recipe.image_url:
-                st.write("Image not available")
+                # st.write("Image not available")
+                st.write("画像はありません")
             if recipe.mp4_url and recipe.mp4_url.startswith(("http://", "https://")):
                 st.video(recipe.mp4_url)
             else:
-                st.write("Video not available")
+                st.write("ビデオはありません")
+                # st.write("Video not available")
 
             info = {
-                "Recipe Title": recipe.recipe_title,
-                "Cuisine Type": recipe.cuisine_type,
-                "Total Time": recipe.total_time,
-                "Serving Size": recipe.serving_size,
-                "Difficulty Level": recipe.difficulty_level,
+                "レシピ名": recipe.recipe_title,
+                "料理の種類": recipe.cuisine_type,
+                "合計時間": recipe.total_time,
+                "サービングサイズ": recipe.serving_size,
+                "難易度": recipe.difficulty_level,
             }
+            # info = {
+            #     "Recipe Title": recipe.recipe_title,
+            #     "Cuisine Type": recipe.cuisine_type,
+            #     "Total Time": recipe.total_time,
+            #     "Serving Size": recipe.serving_size,
+            #     "Difficulty Level": recipe.difficulty_level,
+            # }
             for key, value in info.items():
                 st.subheader(f"**{key}:**")
                 st.write(value)
-            st.subheader("Ingredients:")
+            st.subheader("原材料:")
            
             normalized_ingredients = re.sub(r'\n+', '\n', recipe.ingredients.strip())
             for i, value in enumerate(normalized_ingredients.split('\n'), start=1):
                 st.write(f"{i}. {value.strip()}")
 
-            st.subheader("Instructions:")
+            st.subheader("使用方法:")
 
             for step in recipe.instructions:
                 st.write(f"{step}")
 
             if recipe.extra_features:
-                st.subheader("Extra Features")
+                st.subheader("追加機能")
                 for key, value in recipe.extra_features.items():
                     st.write(f"**{key.replace('_', ' ').title()}**: {value or 'N/A'}")
 
-            st.subheader("Nutritional Info")
+            st.subheader("栄養情報")
+            # st.subheader("Nutritional Info")
             if recipe.nutrients:
                 df = pd.DataFrame(
-                    recipe.nutrients.items(), columns=["Name(項目)", "Value(値)"]
+                    recipe.nutrients.items(), columns=["項目", "値"]
                 )
                 st.table(df)
             else:
-                st.write("No nutritional info found!")
+                # st.write("No nutritional info found!")
+                st.write("栄養情報なし!")
 
             st.session_state.recipe = recipe
             recipe_generated = True
         else:
-            st.error(f"No recipe found for{cleaned_dish_name}")
+            # st.error(f"No recipe found for{cleaned_dish_name}")
+            st.error(f"レシピは見つかりませんでした{cleaned_dish_name}")
 
     # Ingredient Matching & Cart
     if recipe_generated:
