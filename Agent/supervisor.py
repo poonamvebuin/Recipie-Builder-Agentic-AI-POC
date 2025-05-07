@@ -328,7 +328,6 @@ def get_supervisor_agent():
                 - Use only recipes previously suggested
                 - Show average rating and one user comment per dish
 
-                ---
                 📌 SPECIAL CASES YOU MUST HANDLE:
 
                 DAILY MEALS:
@@ -363,7 +362,6 @@ def get_supervisor_agent():
                 If no recipe satisfies every condition, choose the best partial matches and clearly explain why they were chosen.
                 Always prioritize health/dietary restrictions over occasion themes.
                 Ensure cultural fit remains authentic (e.g., don't suggest Western vegan pasta for Obon).
-
         """,
 
         markdown=True,

@@ -7,11 +7,8 @@ import streamlit as st
 from agno.agent import RunResponse
 
 from Agent.product import get_available_ingredients
-from Agent.recipe import (
-    clean_recipe_name,
-    search_for_recipe_exact,
-    stream_response_chunks,
-)
+from Agent.recipe import (clean_recipe_name, search_for_recipe_exact,
+                          stream_response_chunks)
 from Agent.supervisor import get_suggested_titles_with_reviews
 from Agent.weather import get_cities_in_country, get_weather
 from streamlit_app.ui_helpers import render_cart, render_matching_products
@@ -66,28 +63,27 @@ def render_preferences_ui():
         prefs["taste"] = st.sidebar.selectbox(
             "Taste Preference:",
             ["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"],
-            index=5,
+            index=["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"].index(
+                prefs.get("taste") or "No Preference"
+            ),
         )
         prefs["cooking_time"] = st.sidebar.selectbox(
             "Cooking Time:",
-            [
-                "Quick (< 30 min)",
-                "Medium (30-60 min)",
-                "Long (> 60 min)",
-                "No Preference",
-            ],
-            index=3,
+            ["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"],
+            index=["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"].index(
+                prefs.get("cooking_time") or "No Preference"
+            ),
         )
         ingredients_input = st.sidebar.text_area(
-            "Ingredients you want to use (comma separated):"
+            "Ingredients you want to use (comma separated):",
+            value=", ".join(prefs.get("ingredients", [])),
         )
         prefs["ingredients"] = (
-            [i.strip() for i in ingredients_input.split(",")]
-            if ingredients_input
-            else []
+            [i.strip() for i in ingredients_input.split(",")] if ingredients_input else []
         )
         allergies_input = st.sidebar.text_area(
-            "Allergies or ingredients to avoid (comma separated):"
+            "Allergies or ingredients to avoid (comma separated):",
+            value=", ".join(prefs.get("allergies", [])),
         )
         prefs["allergies"] = (
             [a.strip() for a in allergies_input.split(",")] if allergies_input else []
@@ -95,7 +91,9 @@ def render_preferences_ui():
         prefs["diet"] = st.sidebar.selectbox(
             "Dietary Preference:",
             ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"],
-            index=0,
+            index=["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"].index(
+                prefs.get("diet") or "No Preference"
+            ),
         )
 
         if st.sidebar.button("Save Preferences"):
@@ -207,38 +205,67 @@ def get_recipe_suggestions(language: str):
     cols = st.columns(5)
 
     with cols[0]:
-        if st.button("🍱 Balanced Dinner (4ppl, low-cal)" if language == "English" else "🍱 バランスの取れた夕食（4人分）"):
+        if st.button(
+            "🍱 Balanced Dinner (4ppl, low-cal)"
+            if language == "English"
+            else "🍱 バランスの取れた夕食（4人分）"
+        ):
             st.session_state.chat_input_prompt = (
-                "I am looking for a balanced dinner for 4 people (under 600 calories per person). Kids don't like spicy food." if language == "English" else "4人分のバランスの取れた夕食（1人あたり600カロリー以下）を探しています。子供は辛い食べ物が好きではありません。"
+                "I am looking for a balanced dinner for 4 people (under 600 calories per person). Kids don't like spicy food."
+                if language == "English"
+                else "4人分のバランスの取れた夕食（1人あたり600カロリー以下）を探しています。子供は辛い食べ物が好きではありません。"
             )
 
     with cols[1]:
-        if st.button("🎨 Colorful Lunchbox (No nuts)" if language == "English" else "🎨 カラフルなお弁当（ナッツなし)"):
+        if st.button(
+            "🎨 Colorful Lunchbox (No nuts)"
+            if language == "English"
+            else "🎨 カラフルなお弁当（ナッツなし)"
+        ):
             st.session_state.chat_input_prompt = (
-                "I need ideas for a colorful, mess-free lunch box for my picky 6 year old. No nuts allowed." if language == "English" else "こだわりの強い6歳児のために、カラフルでごちゃごちゃしないお弁当箱のアイデアが欲しい。ナッツ類は不可。"
+                "I need ideas for a colorful, mess-free lunch box for my picky 6 year old. No nuts allowed."
+                if language == "English"
+                else "こだわりの強い6歳児のために、カラフルでごちゃごちゃしないお弁当箱のアイデアが欲しい。ナッツ類は不可。"
             )
 
     with cols[2]:
-        if st.button("🥘 Cozy One-Pot Meal for 2" if language == "English" else "🥘 一鍋スタイル料理（2人分）"):
+        if st.button(
+            "🥘 Cozy One-Pot Meal for 2"
+            if language == "English"
+            else "🥘 一鍋スタイル料理（2人分）"
+        ):
             st.session_state.chat_input_prompt = (
-                "Suggest a heartwarming one-pot style meal for two." if language == "English" else "2人分の心温まる一鍋スタイルの料理を提案してください。"
+                "Suggest a heartwarming one-pot style meal for two."
+                if language == "English"
+                else "2人分の心温まる一鍋スタイルの料理を提案してください。"
             )
 
     with cols[3]:
-        if st.button("🍉 Cool Summer Dishes" if language == "English" else "🍉 夏のさっぱり料理"):
+        if st.button(
+            "🍉 Cool Summer Dishes" if language == "English" else "🍉 夏のさっぱり料理"
+        ):
             st.session_state.chat_input_prompt = (
-                "Suggest five healthy and cool summer dishes using fresh vegetables and fruits." if language == "English" else "新鮮な野菜やフルーツを使った、ヘルシーで涼しげな夏の料理を5つ提案する"
-            )
-    
-    with cols[4]:
-        if st.button("💪 High-Protein Post-Workout Japanese Food" if language == "English" else "💪 トレーニング後の高タンパク和食"):
-            st.session_state.chat_input_prompt = (
-                "I would like to know what high protein Japanese food to eat after training." if language == "English" else "トレーニング後に食べる高タンパクな和食が知りたいです。"
+                "Suggest five healthy and cool summer dishes using fresh vegetables and fruits."
+                if language == "English"
+                else "新鮮な野菜やフルーツを使った、ヘルシーで涼しげな夏の料理を5つ提案する"
             )
 
+    with cols[4]:
+        if st.button(
+            "💪 High-Protein Post-Workout Japanese Food"
+            if language == "English"
+            else "💪 トレーニング後の高タンパク和食"
+        ):
+            st.session_state.chat_input_prompt = (
+                "I would like to know what high protein Japanese food to eat after training."
+                if language == "English"
+                else "トレーニング後に食べる高タンパクな和食が知りたいです。"
+            )
+
+
     st.markdown("---")
-    
     display_chat_history()
+    user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
     if "chat_input_prompt" in st.session_state:
         user_input = st.session_state.chat_input_prompt
         del st.session_state.chat_input_prompt
@@ -353,13 +380,29 @@ def get_recipe_suggestions(language: str):
             - DO NOT use JSON format
             """
         if weather_data:
-            prompt += f"""MUST ADD WEATHER DETAILS AND SUGGEST RECIPE
-                {weather_data['temperature']}:
-                    - If the temperature is over 30°C and the weather is hot or sunny, suggest cold or refreshing dishes, drinks.
-                    - If the temperature is below 15°C and the weather is cold, suggest warm and comforting dishes, drinks.
-                    - If the temperature is between 15°C and 30°C, suggest balanced dishes,drinks that are neither too hot nor too cold.
-                {weather_data['description']}:
-                    - If  weather data includes the word **rain**: suggest meal based on rain"""
+            if weather_data["temperature"] >= 30:
+                temperature_category = "hot"
+                recipe_suggestion = (
+                    "You can enjoy cold salads, chilled drinks, and light dishes."
+                )
+            elif weather_data["temperature"] <= 15:
+                temperature_category = "cold"
+                recipe_suggestion = "Warm, comforting dishes like soups, stews, or hot drinks such as tea or cocoa would be ideal."
+            else:
+                temperature_category = "balanced"
+                recipe_suggestion = "Try balanced meals like grilled vegetables, pasta, or refreshing smoothies."
+
+            if "rain" in weather_data["description"].lower():
+                weather_category = "rainy"
+                recipe_suggestion += " Since it's raining, how about a cozy soup or a hearty casserole to warm you up?"
+            else:
+                weather_category = "not rainy"
+
+            prompt += f"""Weather Details:
+                Temperature: {weather_data['temperature']}°C - {temperature_category}
+                Weather Description: {weather_data['description']} - {weather_category}
+                MUST BE MENTION WEATHER WITH RESPONSE
+            """
 
         if is_review_request and st.session_state.last_recipe_suggestions:
             reviewed_data = get_suggested_titles_with_reviews(
@@ -661,8 +704,8 @@ def get_recipe_suggestions(language: str):
         recipe_from_json = search_for_recipe_exact(cleaned_dish_name)
         if recipe_from_json:
             st.session_state.raw_japanese_ingredients = recipe_from_json.get(
-            "ingredients", []
-        )
+                "ingredients", []
+            )
             raw_japanese_ingredients = recipe_from_json.get("ingredients", [])
             prompt = (
                 f"Please translate the following recipe into {language}:\n\n"
@@ -734,5 +777,3 @@ def get_recipe_suggestions(language: str):
         handle_product_matching_and_cart(
             st.session_state.raw_japanese_ingredients, language
         )
-
-
