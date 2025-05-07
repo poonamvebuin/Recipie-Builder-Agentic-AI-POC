@@ -23,15 +23,16 @@ def render_matching_products(products: list[dict]):
     if not products:
         st.error("No matching product found")
 
-    st.subheader("Matching Products:")
+    # st.subheader("Matching Products:")
+    st.subheader("適合製品:")
     for i, product in enumerate(products):
         st.subheader(product["Product_name"])
-        st.write(f"Price with Tax: {product['Tax']}")
-        st.write(f"Price: {product['Price']}")
-        st.write(f"Weight: {product['Weight']}")
+        st.write(f"税込価格: {product['Tax']}")
+        st.write(f"価格: {product['Price']}")
+        st.write(f"重量: {product['Weight']}")
 
         quantity = st.number_input(
-            f"Quantity for {product['Product_name']}",
+            f"数量 {product['Product_name']}",
             min_value=1,
             max_value=10,
             value=1,
@@ -65,7 +66,8 @@ def render_cart():
     """
 
     if st.session_state.cart_items:
-        st.title("🧺 Your Cart:")
+        st.title("🧺 カート:")
+        # st.title("🧺 Your Cart:")
         for item_line in display_cart_summary():
             st.write(item_line)
 

@@ -199,7 +199,8 @@ def handle_product_matching_and_cart(raw_japanese_ingredients, language):
         None
     """
 
-    st.title("🛒 Product Finder for Ingredients")
+    # st.title("🛒 Product Finder for Ingredients")
+    st.title("🛒 原材料の製品検索")
 
     # if st.button("Find Available Ingredients")
     if st.button("利用可能な材料を探す"):
