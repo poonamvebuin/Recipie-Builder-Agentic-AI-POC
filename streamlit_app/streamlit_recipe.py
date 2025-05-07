@@ -265,7 +265,7 @@ def get_recipe_suggestions(language: str):
 
     st.markdown("---")
     display_chat_history()
-    user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
+    # user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
     if "chat_input_prompt" in st.session_state:
         user_input = st.session_state.chat_input_prompt
         del st.session_state.chat_input_prompt
