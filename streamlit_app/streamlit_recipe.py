@@ -47,11 +47,11 @@ def render_location_and_weather_ui():
     if country != "なし":
         cities = get_cities_in_country(country)
         if cities:
-            city = st.sidebar.selectbox("都市を選んでください", cities)
+            city = st.sidebar.selectbox("都市を選ぶ", cities)
+            # city = st.sidebar.selectbox("Choose a city", cities)
             if city and city != "なし":
                 country_code = country_code_map.get(country, "JP")
                 weather_data = get_weather(city, country_code)
-
                 if weather_data:
                     # st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
                     st.sidebar.write(f"🌡️ 温度: {weather_data['temperature']}°C")
