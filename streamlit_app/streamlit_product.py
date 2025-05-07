@@ -1,8 +1,4 @@
 import streamlit as st
-
-from Agent.product import get_available_ingredients
-
-import streamlit as st
 from Agent.product import get_available_ingredients
 from streamlit_app.ui_helpers import render_cart, render_matching_products
 
@@ -26,20 +22,37 @@ def get_product_suggestions(language):
     """
 
     st.title("🛒 Product Finder")
-    product_input = st.text_input(
-        "Enter comma separated list of products or ingredients:"
-    )
+    st.markdown("### 🔎 Most Popular Searches")
 
-    if st.button("Find Products"):
-        ingredients = product_input.split(",")
+    def run_search(ingredients_text):
+        ingredients = [i.strip() for i in ingredients_text.split(",")]
+        print(ingredients)
         products = get_available_ingredients(ingredients, language)
         st.session_state.available_ingredients = products
         st.session_state.search_done = True
-        print('---------st.session_state.available_ingredients', st.session_state.available_ingredients)
 
-    if st.session_state.search_done and st.session_state.available_ingredients:
+    cols = st.columns(3)
+    with cols[0]:
+        if st.button("💧 Water & Milk" if language == "English" else "水 , 牛乳"):
+            input_prompt = ("Water , Milk" if language == "English" else "水 , 牛乳")
+            run_search(input_prompt)
+    with cols[1]:
+        if st.button("🍬 Sugar & Tomato" if language == "English" else "砂糖 , トマト"):
+            input_prompt = ("Sugar , Tomato" if language == "English" else "砂糖 , トマト")
+            run_search(input_prompt)
+    with cols[2]:
+        if st.button("🧂 Soy Sauce & Mayo" if language == "English" else "醤油 , マヨネーズ"):
+            input_prompt = ("Soy Sauce , Mayo" if language == "English" else "醤油 , マヨネーズ")
+            run_search(input_prompt)
+
+    product_input = st.text_input("Enter comma separated list of products or ingredients:")
+    
+    if st.button("Find Products"):
+        run_search(product_input)
+
+    if st.session_state.get("search_done") and st.session_state.get("available_ingredients"):
         render_matching_products(st.session_state.available_ingredients)
-    else:
+    elif st.session_state.get("search_done"):
         st.warning("No matching product found.")
-    if st.session_state.cart_items:
+    if st.session_state.get("cart_items"):
         render_cart()

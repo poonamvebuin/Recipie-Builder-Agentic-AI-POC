@@ -116,6 +116,7 @@ def load_recipe_data(json_path="recipe_data/all_recipes.json"):
         return []
 
 
+@st.cache_data  #########Try this to increase speed
 def search_for_recipe_exact(title: str):
     """Search for a recipe by its exact title.
 
@@ -203,14 +204,12 @@ def search_for_recipe_exact(title: str):
                         nutrient_info.append(
                             {name: str(data["value"]) + str(data["unit"])}
                         )
-
+            
             result = {
                 "recipe_title": recipe.get("title", ""),
                 "cuisine_type": recipe.get("source", None),
                 "total_time": recipe.get("cooking_time", None),
-                "ingredients": "\n".join(
-                    [ingredient["name"]+str(ingredient.get("quantity")) for ingredient in recipe.get("ingredients", [])]
-                ),
+                "ingredients": [ingredient["name"]+str(ingredient.get("quantity")) for ingredient in recipe.get("ingredients", [])],
                 "instructions": processed_instructions,
                 "serving_size": serving_size,
                 "image_url": poster_url,
@@ -263,7 +262,9 @@ def get_agent():
             - Translate the recipe into the language provided by the user.
             - Maintain the original meaning and context of the recipe.
             - If the recipe is in a different language than translate it accordingly.
-            - Modify the recipe only if the number of people is more than the current servings. Adjust the ingredients, time, instructions proportionally.
+            - Change the serving size and quantity of the ingredients only when specified in the prompt and not from the past conversations.
+            - If user prompts recipe for any specifc serving or like for people of 2 or a group then make chnages in both ingredients quantity and serving size proportionally. 
+            - the serving size and ingredients quantity both must change never change only one of them on your own. If not specified take as it is from the database.
             - When outputting the ingredients, ensure each ingredient appears on a **new line**.
             - provide proper nutrients information in key value pair. Don't change any value from its data
             - If the ingredients contain line breaks (`\n`), maintain them and output each ingredient on a **separate line**.
