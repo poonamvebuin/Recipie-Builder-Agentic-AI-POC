@@ -1,15 +1,6 @@
-import json
 import os
-from typing import Dict, List
-
 import requests
-from agno.agent import Agent
-from agno.knowledge.json import JSONKnowledgeBase
-from agno.models.openai import OpenAIChat
-from agno.vectordb.pgvector import PgVector
-from deep_translator import GoogleTranslator
 from dotenv import load_dotenv
-from pydantic import BaseModel
 
 load_dotenv()
 
@@ -114,6 +105,58 @@ india_cities = [
     "バドーダラー",
 ]
 
+
+# City translation maps (JP/IN → English)
+japan_city_map = {
+    "東京": "Tokyo",
+    "大阪": "Osaka",
+    "京都": "Kyoto",
+    "北海道": "Hokkaido",
+    "福岡": "Fukuoka",
+    "札幌": "Sapporo",
+    "長崎": "Nagasaki",
+    "神戸": "Kobe",
+    "横浜": "Yokohama",
+    "広島": "Hiroshima",
+    "奈良": "Nara",
+    "仙台": "Sendai",
+    "鎌倉": "Kamakura",
+    "静岡": "Shizuoka",
+    "高知": "Kochi",
+    "千葉": "Chiba",
+    "福島": "Fukushima",
+    "沖縄": "Okinawa",
+    "香川": "Kagawa",
+    "岐阜": "Gifu",
+}
+
+india_city_map = {
+    "デリー": "Delhi",
+    "ムンバイ": "Mumbai",
+    "バンガロール": "Bangalore",
+    "コルカタ": "Kolkata",
+    "チェンナイ": "Chennai",
+    "ハイデラバード": "Hyderabad",
+    "アーメダバード": "Ahmedabad",
+    "プネー": "Pune",
+    "ジャイプール": "Jaipur",
+    "ルクナウ": "Lucknow",
+    "カーンプル": "Kanpur",
+    "ナグプール": "Nagpur",
+    "インドール": "Indore",
+    "チャンディーガル": "Chandigarh",
+    "ボーパール": "Bhopal",
+    "コインバトール": "Coimbatore",
+    "ヴィシャーカパトナム": "Visakhapatnam",
+    "パトナ": "Patna",
+    "スーラト": "Surat",
+    "バドーダラー": "Vadodara",
+}
+
+# Country code mapping
+country_code_map = {"日本": "JP", "インド": "IN"}
+
+
 def get_cities_in_country(country_name: str):
     """Retrieve a list of cities in a specified country.
 
@@ -136,7 +179,7 @@ def get_cities_in_country(country_name: str):
         return []
 
 
-def get_weather(city: str, country="JP"):
+def get_weather(city: str, country: str = "JP"):
     """Retrieve the current weather information for a specified city and country.
 
     Args:
@@ -146,19 +189,34 @@ def get_weather(city: str, country="JP"):
     Returns:
         dict or None: A dictionary containing the temperature, weather description, and humidity if the request is successful; otherwise, None.
     """
+    
+    # Convert city to English
+    if country == "JP":
+        city = japan_city_map.get(city, city)
+    elif country == "IN":
+        city = india_city_map.get(city, city)
 
     url = f"{BASE_URL}?q={city},{country}&appid={API_KEY}&units=metric"
-    response = requests.get(url)
-    # print('-----------response', response.text, response.status_code)
-    if response.status_code == 200:
-        data = response.json()
-        weather = {
-            "temperature": data["main"]["temp"],
-            "description": data["weather"][0]["description"],
-            "humidity": data["main"]["humidity"],
-        }
-        
 
-        return weather
-    else:
-        return None
+    try:
+        print(f"Requesting weather for: {city}, Country: {country}")
+        response = requests.get(url)
+        print(f"Status Code: {response.status_code}")
+        print(f"Response: {response.text}")
+
+        if response.status_code == 200:
+            data = response.json()
+            if "main" in data and "weather" in data:
+                return {
+                    "temperature": data["main"].get("temp"),
+                    "description": data["weather"][0].get("description"),
+                    "humidity": data["main"].get("humidity"),
+                }
+            else:
+                return {"error": "Incomplete weather data received."}
+        else:
+            return {
+                "error": f"API Error: {response.status_code} - {response.json().get('message', '')}"
+            }
+    except Exception as e:
+        return {"error": f"Exception occurred: {str(e)}"}

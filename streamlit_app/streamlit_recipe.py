@@ -7,8 +7,11 @@ import streamlit as st
 from agno.agent import RunResponse
 
 from Agent.product import get_available_ingredients
-from Agent.recipe import (clean_recipe_name, search_for_recipe_exact,
-                          stream_response_chunks)
+from Agent.recipe import (
+    clean_recipe_name,
+    search_for_recipe_exact,
+    stream_response_chunks,
+)
 from Agent.supervisor import get_suggested_titles_with_reviews
 from Agent.weather import get_cities_in_country, get_weather
 from streamlit_app.ui_helpers import render_cart, render_matching_products
@@ -33,13 +36,18 @@ def render_location_and_weather_ui():
     #     "Enter your country:", ["None", "India", "Japan"], index=0
     # )
     country = st.sidebar.selectbox(
-    "国を選択してください：", ["なし", "インド", "日本"], index=0
-)
+        "国を選択してください：", ["なし", "インド", "日本"], index=0
+    )
+
+    # Mapping for proper API-compatible ISO country codes
+    country_code_map = {"日本": "JP", "インド": "IN"}
 
     city, weather_data = None, None
-    if country != "None":
+
+    if country != "なし":
         cities = get_cities_in_country(country)
         if cities:
+<<<<<<< Updated upstream
             city = st.sidebar.selectbox("都市を選ぶ", cities)
             # city = st.sidebar.selectbox("Choose a city", cities)
             if city and city != "None":
@@ -49,6 +57,21 @@ def render_location_and_weather_ui():
                     st.sidebar.write(f"🌡️ 温度: {weather_data['temperature']}°C")
                     # st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
                     st.sidebar.write(f"☁️ 天気: {weather_data['description']}")
+=======
+            city = st.sidebar.selectbox("都市を選んでください", cities)
+            if city and city != "なし":
+                country_code = country_code_map.get(country, "JP")
+                weather_data = get_weather(city, country_code)
+
+                if weather_data and "temperature" in weather_data:
+                    st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
+                    st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
+                elif "error" in weather_data:
+                    st.sidebar.error(f"⚠️ 天気取得エラー: {weather_data['error']}")
+                else:
+                    st.sidebar.warning("⚠️ 天気データが利用できません。")
+
+>>>>>>> Stashed changes
     return country, city, weather_data
 
 
@@ -76,20 +99,43 @@ def render_preferences_ui():
             # index=["Sweet", "Savory", "Spicy", "Tangy", "Mild", "No Preference"].index(
             #     prefs.get("taste") or "No Preference"
             # ),
-            ["スウィート","セイボリー","スパイシー","ピリ辛","マイルド","好みなし"],
-            index=["スウィート","セイボリー","スパイシー","ピリ辛","マイルド","好みなし"].index(
-                prefs.get("taste") or "好みなし"
-            ),
+            [
+                "スウィート",
+                "セイボリー",
+                "スパイシー",
+                "ピリ辛",
+                "マイルド",
+                "好みなし",
+            ],
+            index=[
+                "スウィート",
+                "セイボリー",
+                "スパイシー",
+                "ピリ辛",
+                "マイルド",
+                "好みなし",
+            ].index(prefs.get("taste") or "好みなし"),
         )
         prefs["cooking_time"] = st.sidebar.selectbox(
             "調理時間:",
-            ["クイック(30分未満)", "ミディアム(30~60分)", "ロング(60分以上)", "優先順位なし"],
-            index=["クイック(30分未満)", "ミディアム(30~60分)", "ロング(60分以上)", "優先順位なし"].index(
-                prefs.get("cooking_time") or "優先順位なし"
-            # "Cooking Time:",
-            # ["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"],
-            # index=["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"].index(
-            #     prefs.get("cooking_time") or "No Preference"
+            [
+                "クイック(30分未満)",
+                "ミディアム(30~60分)",
+                "ロング(60分以上)",
+                "優先順位なし",
+            ],
+            index=[
+                "クイック(30分未満)",
+                "ミディアム(30~60分)",
+                "ロング(60分以上)",
+                "優先順位なし",
+            ].index(
+                prefs.get("cooking_time")
+                or "優先順位なし"
+                # "Cooking Time:",
+                # ["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"],
+                # index=["Quick (< 30 min)", "Medium (30-60 min)", "Long (> 60 min)", "No Preference"].index(
+                #     prefs.get("cooking_time") or "No Preference"
             ),
         )
         ingredients_input = st.sidebar.text_area(
@@ -98,7 +144,9 @@ def render_preferences_ui():
             value=", ".join(prefs.get("ingredients", [])),
         )
         prefs["ingredients"] = (
-            [i.strip() for i in ingredients_input.split(",")] if ingredients_input else []
+            [i.strip() for i in ingredients_input.split(",")]
+            if ingredients_input
+            else []
         )
         allergies_input = st.sidebar.text_area(
             # "Allergies or ingredients to avoid (comma separated):",
@@ -111,17 +159,23 @@ def render_preferences_ui():
         prefs["diet"] = st.sidebar.selectbox(
             "食事の好み：",
             ["優先順位なし", "ベジタリアン", "ヴィーガン", "ノン・ベジタリアン"],
-            index=["優先順位なし", "ベジタリアン", "ヴィーガン", "ノン・ベジタリアン"].index(
-                prefs.get("diet") or "優先順位なし"
-            # "Dietary Preference:",
-            # ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"],
-            # index=["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"].index(
-            #     prefs.get("diet") or "No Preference"
+            index=[
+                "優先順位なし",
+                "ベジタリアン",
+                "ヴィーガン",
+                "ノン・ベジタリアン",
+            ].index(
+                prefs.get("diet")
+                or "優先順位なし"
+                # "Dietary Preference:",
+                # ["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"],
+                # index=["No Preference", "Vegetarian", "Vegan", "Non-Vegetarian"].index(
+                #     prefs.get("diet") or "No Preference"
             ),
         )
 
         if st.sidebar.button("プリファレンスの保存"):
-        # if st.sidebar.button("Save Preferences"):
+            # if st.sidebar.button("Save Preferences"):
             st.session_state.preferences_collected = True
             # st.sidebar.success("Preferences saved! Ask for recipe suggestions.")
             st.sidebar.success("設定を保存！レシピの提案を求める")
@@ -238,13 +292,12 @@ def get_recipe_suggestions(language: str):
     st.markdown("<h2>🧑‍🍳 レシピアシスタントとチャット</h2>", unsafe_allow_html=True)
     country, city, weather_data = render_location_and_weather_ui()
     render_preferences_ui()
-    
+
     # user_input = st.chat_input("Ask for a recipe suggestion...", key="chat_input")
     user_input = st.chat_input("レシピの提案を求める", key="chat_input")
     # 🔖 Quick Prompt Buttons
     # st.markdown("### 🔎 Most Popular Searches")
     st.markdown("### 🔎 人気の検索")
-    
 
     cols = st.columns(5)
 
@@ -305,7 +358,6 @@ def get_recipe_suggestions(language: str):
                 if language == "English"
                 else "トレーニング後に食べる高タンパクな和食が知りたいです。"
             )
-
 
     st.markdown("---")
     display_chat_history()
@@ -671,12 +723,12 @@ def get_recipe_suggestions(language: str):
         st.subheader("🍽️ おすすめレシピ:")
         for suggestion in st.session_state.dish_suggestions:
             if suggestion.startswith("おすすめ料理:"):
-            # if suggestion.startswith("Recommended Dish:"):
+                # if suggestion.startswith("Recommended Dish:"):
                 match = re.search(r"Recommended Dish:\s*(.+)", suggestion)
                 match = re.search(r"おすすめ料理\s*(.+)", suggestion)
                 if match:
                     dish_name = clean_recipe_name(match.group(1).strip())
-                    print('dish_name:', dish_name)
+                    print("dish_name:", dish_name)
                     dish_name = re.sub(r"\s*\(.*?\)", "", dish_name).strip()
                     if st.button(cleaned_name):
                         st.session_state.final_dish_choice = cleaned_name
@@ -721,9 +773,7 @@ def get_recipe_suggestions(language: str):
                 preferences["cooking_time"]
                 and preferences["cooking_time"] != "好みなし"
             ):
-                preferences_list.append(
-                    f"- 調理時間: {preferences['cooking_time']}"
-                )
+                preferences_list.append(f"- 調理時間: {preferences['cooking_time']}")
             # if (
             #     preferences["cooking_time"]
             #     and preferences["cooking_time"] != "No Preference"
@@ -757,9 +807,7 @@ def get_recipe_suggestions(language: str):
             # Join all valid preferences together
             if preferences_list:
                 # preferences_context = "User Preferences:\n" + "\n".join(
-                preferences_context = "ユーザー設定:\n" + "\n".join(
-                    preferences_list
-                )
+                preferences_context = "ユーザー設定:\n" + "\n".join(preferences_list)
 
         # Construct prompt for recipe agent using context
         cleaned_dish_name = re.sub(
@@ -817,9 +865,9 @@ def get_recipe_suggestions(language: str):
                 st.subheader(f"**{key}:**")
                 st.write(value)
             st.subheader("原材料:")
-           
-            normalized_ingredients = re.sub(r'\n+', '\n', recipe.ingredients.strip())
-            for i, value in enumerate(normalized_ingredients.split('\n'), start=1):
+
+            normalized_ingredients = re.sub(r"\n+", "\n", recipe.ingredients.strip())
+            for i, value in enumerate(normalized_ingredients.split("\n"), start=1):
                 st.write(f"{i}. {value.strip()}")
 
             st.subheader("使用方法:")
@@ -835,9 +883,7 @@ def get_recipe_suggestions(language: str):
             st.subheader("栄養情報")
             # st.subheader("Nutritional Info")
             if recipe.nutrients:
-                df = pd.DataFrame(
-                    recipe.nutrients.items(), columns=["項目", "値"]
-                )
+                df = pd.DataFrame(recipe.nutrients.items(), columns=["項目", "値"])
                 st.table(df)
             else:
                 # st.write("No nutritional info found!")
