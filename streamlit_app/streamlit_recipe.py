@@ -40,12 +40,15 @@ def render_location_and_weather_ui():
     if country != "None":
         cities = get_cities_in_country(country)
         if cities:
-            city = st.sidebar.selectbox("Choose a city", cities)
+            city = st.sidebar.selectbox("都市を選ぶ", cities)
+            # city = st.sidebar.selectbox("Choose a city", cities)
             if city and city != "None":
                 weather_data = get_weather(city, country)
                 if weather_data:
-                    st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
-                    st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
+                    # st.sidebar.write(f"🌡️ Temperature: {weather_data['temperature']}°C")
+                    st.sidebar.write(f"🌡️ 温度: {weather_data['temperature']}°C")
+                    # st.sidebar.write(f"☁️ Weather: {weather_data['description']}")
+                    st.sidebar.write(f"☁️ 天気: {weather_data['description']}")
     return country, city, weather_data
 
 
