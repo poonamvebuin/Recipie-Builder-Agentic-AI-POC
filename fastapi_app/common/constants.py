@@ -9,4 +9,7 @@ SECRETS_MANAGER_DB_CREDENTIAL = "DATABASE_CREDENTIAL"
 # endpoints
 NEW_CHAT="/new-chat"
 RECIPE_SUGGESSTION="/recipe-suggestions"
-PRODUCTS="/products"
+
+PRODUCTS_LIST="/products-list"
+
+FIND_PRODUCT = "/find-products" 
