@@ -1,8 +1,8 @@
 
 from datetime import datetime
 from uuid import UUID
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import List, Optional, Union,Dict,Any
 
 
 class AllergenBase(BaseModel):
@@ -134,3 +134,55 @@ class SupervisorResponse(BaseModel):
     status_code: int
     message: str
     data: SupervisorResponseData
+
+class Nutrient(BaseModel):
+    value: Union[int, float]
+    unit: str
+   
+class RecipeDetail(BaseModel):
+    recipe_title: str
+    cuisine_type: str
+    total_time: str
+    serving_size: Optional[str] = None
+    ingredients: List[str]
+    instructions: List[str]
+    image_url: Optional[str] = None
+    mp4_url: Optional[str] = None
+    nutritional_info: Optional[Dict[str, Nutrient]] = None
+    difficulty_level: Optional[str] = None
+class RecipeResponseData(BaseModel):
+    recipe: RecipeDetail
+class RecipeResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    data: RecipeResponseData
+
+class RecipeRequest(BaseModel):
+    language: str
+    session_id: Optional[str]
+    selected_recipes: str
+
+class Product(BaseModel):
+    product_id: int
+    product_name: str
+    price: str
+    weight: int
+    unit: str
+    tax: str
+    is_vegan: bool
+    brand: Optional[str] = None
+    image_url: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class PaginatedResponse(BaseModel):
+    total: int
+    items: List[Product]
+class ProductResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    data: PaginatedResponse  
+    
+    model_config = ConfigDict(from_attributes=True)
