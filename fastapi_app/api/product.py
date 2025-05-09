@@ -1,11 +1,16 @@
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from fastapi_app.models.connect_db import SessionLocal
+from fastapi_app.models.models import Product
+from fastapi_app.common.schema import PaginatedResponse, ProductListResponse, Product
+from fastapi_app.services.product import ProductService
+
+
+
 from fastapi_app.common.schema import ProductResponse
 from fastapi_app.services.product import ProductFinderAgent
-from fastapi_app.common.constants import FIND_PRODUCT
+from fastapi_app.common.constants import FIND_PRODUCT,PRODUCTS_LIST
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import List, Optional
-from sqlalchemy.orm import Session
-from fastapi_app.models.connect_db import SessionLocal
-
 router = APIRouter()
 
 def get_db():
@@ -14,6 +19,25 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@router.get(PRODUCTS_LIST, response_model=ProductListResponse)
+def fetch_products(
+    skip: int,
+    limit: int,
+    db: Session = Depends(get_db)
+):
+    product_service = ProductService(db)
+    total, products = product_service.get_paginated_products(skip, limit)
+    
+    product_items = [Product.from_orm(p) for p in products]
+    paginated= PaginatedResponse(total=total, items=product_items)
+    return ProductListResponse(
+        success=True,
+        status_code=200,
+        message="Fetched products successfully",
+        data=paginated
+    )
+
 
 @router.get(FIND_PRODUCT, response_model=ProductResponse)
 def find_products(
@@ -48,3 +72,4 @@ def find_products(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+

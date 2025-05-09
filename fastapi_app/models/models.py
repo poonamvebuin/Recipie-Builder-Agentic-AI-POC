@@ -1,7 +1,7 @@
 # fastapi_App/models.py
 
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, JSON, Index, create_engine, ForeignKey, Text, TIMESTAMP
+    Column, String, Integer, BigInteger, JSON, Index, create_engine, ForeignKey, Text, TIMESTAMP,Boolean
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -39,11 +39,16 @@ class Product(Base):
     __tablename__ = "products"
     __table_args__ = {"schema": "ai"}
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String, nullable=False)
-    description = Column(String)
-    price = Column(Integer)
-    # Add more fields as per your use case
+    product_id = Column(Integer, primary_key=True, autoincrement=True)
+    product_name = Column(String, nullable=False)    
+    price = Column(String(50))  # Stored as string in DB
+    weight = Column(Integer)
+    unit = Column(String(50))
+    tax = Column(String(50))
+    is_vegan = Column(Boolean)
+    brand = Column(String(255))
+    image_url = Column(Text)
+    
 
 # 3. JSON Documents Table (for knowledge base)
 class JSONDocument(Base):

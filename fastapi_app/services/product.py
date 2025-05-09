@@ -1,3 +1,9 @@
+from sqlalchemy.orm import Session
+from fastapi_app.models.models import Product
+from typing import List, Tuple
+
+from fastapi_app.models.product import get_all_products
+
 import os
 import re
 from typing import List, Dict, Any
@@ -7,6 +13,19 @@ from rapidfuzz import fuzz, process
 
 from fastapi_app.models.product import fetch_products
 
+class ProductService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_paginated_products(self, skip: int, limit: int) -> Tuple[int, List[Product]]:
+        """
+        Fetch paginated products from the database.
+
+        Returns:
+            total: total count of products
+            products: list of products (subset based on pagination)
+        """
+        return get_all_products(self.db, skip=skip, limit=limit)
 
 class ProductFinderAgent:
     """ProductFinderAgent is a class that facilitates the retrieval and processing of product information from a PostgreSQL database, as well as the translation and cleaning of ingredient data.
@@ -230,3 +249,4 @@ class ProductFinderAgent:
             return formatted
         except Exception as e:
             raise Exception(f"Ingredient lookup error: {e}")
+
