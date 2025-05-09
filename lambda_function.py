@@ -22,17 +22,21 @@
 #     return handler(event, context)
 
  
-import os
 import json
-import uvicorn
-from mangum import Mangum
-from fastapi import FastAPI
-from inspect import getmembers, isclass
-import fastapi_app.common.exception as exceptions
+import os
 from contextlib import asynccontextmanager
+from inspect import getmembers, isclass
+
+import uvicorn
+from fastapi import FastAPI
+from mangum import Mangum
+
+import fastapi_app.common.exception as exceptions
+from fastapi_app.api import product, supervisor
+from fastapi_app.common.utils import (custom_exception_handler,
+                                      exception_handler)
 from fastapi_app.models.connect_db import create_tables_on_startup
-from fastapi_app.common.utils import exception_handler, custom_exception_handler
-from fastapi_app.api import chat
+
 # , raw_material, file, data_extraction, raw_material_allergy_mappings, raw_material_mappings
 
 @asynccontextmanager
@@ -70,7 +74,9 @@ def map_exception_handlers(app):
 
 app = FastAPI(lifespan=lifespan)
 prefix = "/" +os.environ.get("API_PREFIX", "Dev")
-app.include_router(chat.router, prefix=prefix+"/recipe-builder/api/v1")
+app.include_router(supervisor.router, prefix=prefix+"/recipe-builder/api/v1")
+app.include_router(product.router, prefix=prefix + "/recipe-builder/api/v1")
+
 # app.include_router(raw_material.router, prefix=prefix+"/allergy-detection/api/v1")
 # app.include_router(file.router, prefix=prefix + "/allergy-detection/api/v1")
 # app.include_router(data_extraction.router, prefix=prefix+"/allergy-detection/api/v1")

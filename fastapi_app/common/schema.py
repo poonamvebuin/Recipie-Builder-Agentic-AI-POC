@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, Field
@@ -92,13 +91,18 @@ class PredictAllergy(BaseModel):
     class Config:
         from_attributes = True
 
+
 class NewChatRequest(BaseModel):
-    language: str = Field(..., description="The language preference for the chat session")
+    language: str = Field(
+        ..., description="The language preference for the chat session"
+    )
+
 
 class ChatData(BaseModel):
     message: str
     options: List[str]
     option_message: List[str]
+
 
 class NewChatResponse(BaseModel):
     session_id: str
@@ -134,3 +138,23 @@ class SupervisorResponse(BaseModel):
     status_code: int
     message: str
     data: SupervisorResponseData
+
+
+class ProductItem(BaseModel):
+    product_id: str
+    product_name: str
+    price: str
+    tax: str
+    price_with_tax: str
+    weight: str
+
+
+class ProductResponseData(BaseModel):
+    products: List[ProductItem]
+
+
+class ProductResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    data: ProductResponseData

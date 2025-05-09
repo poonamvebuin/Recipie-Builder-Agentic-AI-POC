@@ -27,7 +27,7 @@
 def get_pg_config():
 
     return {
-        "dbname": 'agno',
+        "dbname": 'agno_db',
         "host":'localhost',
         "password": 'admin',
         "port": 5432,
