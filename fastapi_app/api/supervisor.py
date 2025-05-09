@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from fastapi_app.models.connect_db import SessionLocal
-from fastapi_app.services.chat import RecipeChatAgent
-from fastapi_app.common.schema import NewChatRequest, NewChatResponse, ChatData,SupervisorRequest,SupervisorResponse,SupervisorResponseData
-from fastapi_app.common.constants import (NEW_CHAT,RECIPE_SUGGESSTION)
+from fastapi_app.services.supervisor import RecipeChatAgent
+from fastapi_app.common.schema import NewChatRequest, NewChatResponse, ChatData,SupervisorRequest,SupervisorResponse
+from fastapi_app.common.constants import (FIND_PRODUCT, NEW_CHAT,RECIPE_SUGGESSTION)
 router = APIRouter()
 
 

@@ -5,7 +5,6 @@ psycopg2
 mangum
 pgvector
 boto3
-openai==1.76.0
 agno==1.4.1
 psycopg==3.2.6
 psycopg-binary==3.2.6
