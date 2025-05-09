@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from fastapi_app.common.constants import PRODUCTS
 from fastapi_app.models.connect_db import SessionLocal
 from fastapi_app.models.models import Product
 from fastapi_app.common.schema import PaginatedResponse, ProductListResponse, Product
@@ -10,7 +9,7 @@ from fastapi_app.services.product import ProductService
 
 from fastapi_app.common.schema import ProductResponse
 from fastapi_app.services.product import ProductFinderAgent
-from fastapi_app.common.constants import FIND_PRODUCT
+from fastapi_app.common.constants import FIND_PRODUCT,PRODUCTS_LIST
 from fastapi import APIRouter, Depends, HTTPException, Query
 router = APIRouter()
 
