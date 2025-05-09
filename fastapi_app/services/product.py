@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from fastapi_app.models.models import Product
 from typing import List, Tuple
 
+from fastapi_app.models.product import get_all_products
 class ProductService:
     def __init__(self, db: Session):
         self.db = db
@@ -16,7 +17,5 @@ class ProductService:
             total: total count of products
             products: list of products (subset based on pagination)
         """
-        total = self.db.query(Product).count()
-        query = self.db.query(Product).order_by(Product.product_id.asc()).offset(skip).limit(limit)
-        return total, query
+        return get_all_products(self.db, skip=skip, limit=limit)
 
