@@ -17,7 +17,7 @@ class ProductService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_paginated_products(self, skip: int, limit: int) -> Tuple[int, List[Product]]:
+    def get_paginated_products(self, page_no: int, limit: int) -> Tuple[int, List[Product]]:
         """
         Fetch paginated products from the database.
 
@@ -25,7 +25,7 @@ class ProductService:
             total: total count of products
             products: list of products (subset based on pagination)
         """
-        return get_all_products(self.db, skip=skip, limit=limit)
+        return get_all_products(self.db, page_no=page_no, limit=limit)
 
 class ProductFinderAgent:
     """ProductFinderAgent is a class that facilitates the retrieval and processing of product information from a PostgreSQL database, as well as the translation and cleaning of ingredient data.

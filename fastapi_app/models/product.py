@@ -5,10 +5,11 @@ from fastapi import HTTPException
 from fastapi_app.models.models import Product
 from fastapi_app.models.connect_db import connect_to_postgres
 
-def get_all_products(db: Session, skip: int = 0, limit: int = 10) -> Tuple[int, List[Product]]:
+def get_all_products(db: Session, page_no: int = 1, limit: int = 20) -> Tuple[int, List[Product]]:
     try:
+        offset = (page_no - 1) * limit
         total = db.query(Product).count()
-        products = db.query(Product).order_by(Product.product_id.asc()).offset(skip).limit(limit).all()
+        products = db.query(Product).order_by(Product.product_id.asc()).offset(offset).limit(limit).all()
         return total, products
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"{e}")
