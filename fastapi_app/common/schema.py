@@ -139,6 +139,7 @@ class SupervisorResponse(BaseModel):
     message: str
     data: SupervisorResponseData
 
+
 class RecipeData(BaseModel):
     selected_recipes: str
     preferences: Preferences
@@ -147,6 +148,7 @@ class RecipeData(BaseModel):
 class Nutrient(BaseModel):
     value: Union[int, float]
     unit: str
+
 
 class RecipeDetail(BaseModel):
     recipe_title: str
@@ -159,18 +161,24 @@ class RecipeDetail(BaseModel):
     mp4_url: Optional[str] = None
     nutritional_info: Optional[Dict[str, str]] = None
     difficulty_level: Optional[str] = None
+
+
 class RecipeResponseData(BaseModel):
     recipe: RecipeDetail
+
+
 class RecipeDetailResponse(BaseModel):
     success: bool
     status_code: int
     message: str
     data: RecipeResponseData
 
+
 class RecipeDetailRequest(BaseModel):
     language: str
     session_id: Optional[str]
     data : RecipeData
+
 
 class Product(BaseModel):
     product_id: int
@@ -185,9 +193,11 @@ class Product(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class PaginatedResponse(BaseModel):
     total: int
     items: List[Product]
+
 
 class ProductListResponse(BaseModel):
     success: bool
@@ -196,6 +206,7 @@ class ProductListResponse(BaseModel):
     data: PaginatedResponse  
     
     model_config = ConfigDict(from_attributes=True)
+
 
 class ProductItem(BaseModel):
     product_id: str
@@ -209,11 +220,13 @@ class ProductItem(BaseModel):
 class ProductResponseData(BaseModel):
     products: List[ProductItem]
 
+
 class ProductResponse(BaseModel):
     success: bool
     status_code: int
     message: str
     data: ProductResponseData
+
 
 class RecipeOutput(BaseModel):
     recipe_title: str
