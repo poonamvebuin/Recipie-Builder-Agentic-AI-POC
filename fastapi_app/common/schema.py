@@ -138,11 +138,18 @@ class SupervisorResponse(BaseModel):
     status_code: int
     message: str
     data: SupervisorResponseData
-      
+
+
+class RecipeData(BaseModel):
+    selected_recipes: str
+    preferences: Preferences
+
+
 class Nutrient(BaseModel):
     value: Union[int, float]
     unit: str
-   
+
+
 class RecipeDetail(BaseModel):
     recipe_title: str
     cuisine_type: str
@@ -152,20 +159,26 @@ class RecipeDetail(BaseModel):
     instructions: List[str]
     image_url: Optional[str] = None
     mp4_url: Optional[str] = None
-    nutritional_info: Optional[Dict[str, Nutrient]] = None
+    nutritional_info: Optional[Dict[str, str]] = None
     difficulty_level: Optional[str] = None
+
+
 class RecipeResponseData(BaseModel):
     recipe: RecipeDetail
-class RecipeResponse(BaseModel):
+
+
+class RecipeDetailResponse(BaseModel):
     success: bool
     status_code: int
     message: str
     data: RecipeResponseData
 
-class RecipeRequest(BaseModel):
+
+class RecipeDetailRequest(BaseModel):
     language: str
     session_id: Optional[str]
-    selected_recipes: str
+    data : RecipeData
+
 
 class Product(BaseModel):
     product_id: int
@@ -179,6 +192,7 @@ class Product(BaseModel):
     image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class PaginatedResponse(BaseModel):
     total: int
@@ -194,7 +208,6 @@ class ProductListResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 class ProductItem(BaseModel):
     product_id: str
     product_name: str
@@ -207,11 +220,29 @@ class ProductItem(BaseModel):
 class ProductResponseData(BaseModel):
     products: List[ProductItem]
 
+
 class ProductResponse(BaseModel):
     success: bool
     status_code: int
     message: str
     data: ProductResponseData
+
+
+class RecipeOutput(BaseModel):
+    recipe_title: str
+    cuisine_type: Optional[str] = None
+    cook_time: Optional[str] = None
+    total_time: Optional[str] = None
+    ingredients: Optional[str] = None
+    instructions: Optional[List[str]] = None
+    nutrients: Optional[Dict[str, str]] = None
+    difficulty_level: Optional[str] = None
+    serving_size: Optional[str] = None
+    extra_features: Optional[Dict[str, str]] = None
+    image_url: Optional[str] = None
+    suggestions: Optional[List[str]] = None
+    explanation: Optional[str] = None
+    mp4_url: Optional[str] = None
 
 
 
