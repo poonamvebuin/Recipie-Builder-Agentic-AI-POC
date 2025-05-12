@@ -22,12 +22,12 @@ def get_db():
 
 @router.get(PRODUCTS_LIST, response_model=ProductListResponse)
 def fetch_products(
-    skip: int,
+    page_no: int,
     limit: int,
     db: Session = Depends(get_db)
 ):
     product_service = ProductService(db)
-    total, products = product_service.get_paginated_products(skip, limit)
+    total, products = product_service.get_paginated_products(page_no, limit)
     
     product_items = [Product.from_orm(p) for p in products]
     paginated= PaginatedResponse(total=total, items=product_items)

@@ -11,5 +11,6 @@ NEW_CHAT="/new-chat"
 RECIPE_SUGGESSTION="/recipe-suggestions"
 
 PRODUCTS_LIST="/products-list"
-
 FIND_PRODUCT = "/find-products" 
+
+RECIPE_DETAILS="/get-recipe"
