@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional, Union,Dict,Any
+from typing import List, Optional, Union, Dict, Any
 
 
 class AllergenBase(BaseModel):
@@ -177,7 +177,7 @@ class RecipeDetailResponse(BaseModel):
 class RecipeDetailRequest(BaseModel):
     language: str
     session_id: Optional[str]
-    data : RecipeData
+    data: RecipeData
 
 
 class Product(BaseModel):
@@ -203,8 +203,8 @@ class ProductListResponse(BaseModel):
     success: bool
     status_code: int
     message: str
-    data: PaginatedResponse  
-    
+    data: PaginatedResponse
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -215,6 +215,11 @@ class ProductItem(BaseModel):
     tax: str
     price_with_tax: str
     weight: str
+
+
+class ProductRequest(BaseModel):
+    language: str
+    session_id: str
 
 
 class ProductResponseData(BaseModel):
@@ -245,4 +250,54 @@ class RecipeOutput(BaseModel):
     mp4_url: Optional[str] = None
 
 
+class AddToCartRequest(BaseModel):
+    session_id: str
+    language: str
+    quantity: int
+    user_id: str
 
+
+class GetCartRequest(BaseModel):
+    user_id: str
+    session_id: str
+
+
+class RemoveToCartRequest(BaseModel):
+    id: int
+
+
+class CartProductDetail(BaseModel):
+    cart_item_id: int
+    product_id: int
+    product_name: str
+    price: float
+    quantity: int
+    subtotal: float
+    created_at: datetime
+    updated_at: datetime
+
+
+class CartSummaryResponse(BaseModel):
+    user_id: str
+    total_items: int
+    cart: List[CartProductDetail]
+
+
+class AddToCartResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    cart: CartSummaryResponse
+
+
+class RemoveToCartResponse(BaseModel):
+    success: bool
+    status_code: int
+    message: str
+    cart_id: int
+
+
+class EroorRespone(BaseModel):
+    success: bool
+    status_code: int
+    message: str

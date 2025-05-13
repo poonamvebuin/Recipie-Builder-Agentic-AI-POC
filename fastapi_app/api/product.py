@@ -1,16 +1,18 @@
-from sqlalchemy.orm import Session
+import logging
 from typing import List, Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from fastapi_app.common.constants import FIND_PRODUCT, PRODUCTS_LIST
+from fastapi_app.common.schema import (PaginatedResponse, Product,
+                                       ProductListResponse, ProductRequest,
+                                       ProductResponse)
 from fastapi_app.models.connect_db import SessionLocal
 from fastapi_app.models.models import Product
-from fastapi_app.common.schema import PaginatedResponse, ProductListResponse, Product
-from fastapi_app.services.product import ProductService
+from fastapi_app.services.product import ProductFinderAgent, ProductService
 
-
-
-from fastapi_app.common.schema import ProductResponse
-from fastapi_app.services.product import ProductFinderAgent
-from fastapi_app.common.constants import FIND_PRODUCT,PRODUCTS_LIST
-from fastapi import APIRouter, Depends, HTTPException, Query
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 def get_db():
@@ -19,7 +21,7 @@ def get_db():
         yield db
     finally:
         db.close()
-
+        
 @router.get(PRODUCTS_LIST, response_model=ProductListResponse)
 def fetch_products(
     page_no: int,
@@ -41,10 +43,8 @@ def fetch_products(
 
 @router.get(FIND_PRODUCT, response_model=ProductResponse)
 def find_products(
-    language: str = Query("English"),
-    session_id: Optional[str] = Query(""),
+    payload: ProductRequest = Body(...),
     ingredients: List[str] = Query(...), 
-    db: Session = Depends(get_db)
 ):
     """Finds products based on the provided ingredients and language.
     
@@ -62,7 +62,7 @@ def find_products(
     """
     try:
         product_agent = ProductFinderAgent()
-        matched_products = product_agent.get_available_ingredients(ingredients, language)
+        matched_products = product_agent.get_available_ingredients(ingredients, payload.language)
 
         return ProductResponse(
             success=True,
