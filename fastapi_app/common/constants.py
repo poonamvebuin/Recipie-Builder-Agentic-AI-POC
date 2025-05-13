@@ -14,3 +14,9 @@ PRODUCTS_LIST="/products-list"
 FIND_PRODUCT = "/find-products" 
 
 RECIPE_DETAILS="/get-recipe"
+NEW_CHAT = "/new-chat"
+
+# Cart-related endpoint constants
+ADD_TO_CART = "/add/product/{product_id}/cart"
+REMOVE_FROM_CART = "/remove/cart_id/{cart_id}/cart"
+CART_SUMMARY = "/cart-summary"

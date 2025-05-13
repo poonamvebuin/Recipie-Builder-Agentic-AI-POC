@@ -1,7 +1,7 @@
 # fastapi_App/models.py
 
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, JSON, Index, create_engine, ForeignKey, Text, TIMESTAMP,Boolean
+    Column, String, Integer, BigInteger, DateTime, Index, create_engine, ForeignKey, Text, TIMESTAMP
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -70,3 +70,15 @@ class JSONDocument(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True))
     content_hash = Column(String)
+
+
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    __table_args__ = {"schema": "ai"}
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, nullable=False)
+    product_id = Column(Integer, ForeignKey("ai.products.product_id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
