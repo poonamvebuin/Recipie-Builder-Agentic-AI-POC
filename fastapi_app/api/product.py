@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from fastapi_app.common.constants import FIND_PRODUCT, PRODUCTS_LIST
-from fastapi_app.common.schema import (PaginatedResponse, Product1,
+from fastapi_app.common.schema import (PaginatedResponse, Products,
                                        ProductListResponse, ProductRequest,
                                        ProductResponse)
 from fastapi_app.models.connect_db import SessionLocal
@@ -31,7 +31,7 @@ def fetch_products(
     product_service = ProductService(db)
     total, products = product_service.get_paginated_products(page_no, limit)
     
-    product_items = [Product1.from_orm(p) for p in products]
+    product_items = [Products.from_orm(p) for p in products]
     paginated= PaginatedResponse(total=total, items=product_items)
     return ProductListResponse(
         success=True,
