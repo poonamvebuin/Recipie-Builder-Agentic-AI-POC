@@ -41,7 +41,7 @@ def fetch_products(
     )
 
 
-@router.get(FIND_PRODUCT, response_model=ProductResponse)
+@router.post(FIND_PRODUCT, response_model=ProductResponse)
 def find_products(
     payload: ProductRequest = Body(...),
     ingredients: List[str] = Query(...), 

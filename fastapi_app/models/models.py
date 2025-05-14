@@ -1,7 +1,7 @@
 # fastapi_App/models.py
 
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, DateTime, Index, create_engine, ForeignKey, Text, TIMESTAMP
+    Boolean, Column, String, Integer, BigInteger, DateTime, Index, create_engine, ForeignKey, Text, TIMESTAMP
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
