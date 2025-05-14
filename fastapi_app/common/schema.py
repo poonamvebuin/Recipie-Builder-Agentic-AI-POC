@@ -180,7 +180,7 @@ class RecipeDetailRequest(BaseModel):
     data: RecipeData
 
 
-class Product(BaseModel):
+class Product1(BaseModel):
     product_id: int
     product_name: str
     price: str
@@ -196,7 +196,7 @@ class Product(BaseModel):
 
 class PaginatedResponse(BaseModel):
     total: int
-    items: List[Product]
+    items: List[Product1]
 
 
 class ProductListResponse(BaseModel):
