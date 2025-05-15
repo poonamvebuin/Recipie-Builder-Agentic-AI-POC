@@ -14,7 +14,7 @@ def get_db():
     finally:
         db.close()
 
-@router.get(RECIPE_DETAILS, response_model=RecipeDetailResponse)
+@router.post(RECIPE_DETAILS, response_model=RecipeDetailResponse)
 def get_recipe_details(request: RecipeDetailRequest, db: Session = Depends(get_db)):
 
     recipe_agent = RecipeDetailsAgent(language=request.language)
