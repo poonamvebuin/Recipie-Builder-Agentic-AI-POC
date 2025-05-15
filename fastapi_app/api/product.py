@@ -44,7 +44,6 @@ def fetch_products(
 @router.post(FIND_PRODUCT, response_model=ProductResponse)
 def find_products(
     payload: ProductRequest = Body(...),
-    ingredients: List[str] = Query(...), 
 ):
     """Finds products based on the provided ingredients and language.
     
@@ -62,7 +61,7 @@ def find_products(
     """
     try:
         product_agent = ProductFinderAgent()
-        matched_products = product_agent.get_available_ingredients(ingredients, payload.language)
+        matched_products = product_agent.get_available_ingredients(payload.ingredients, payload.language)
 
         return ProductResponse(
             success=True,

@@ -1,8 +1,10 @@
 import re
+
+import streamlit as st
 from deep_translator import GoogleTranslator
 from rapidfuzz import fuzz, process
+
 from Database.database import search_products
-import streamlit as st
 
 
 @st.cache_data

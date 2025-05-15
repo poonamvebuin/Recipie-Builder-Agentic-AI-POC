@@ -220,6 +220,7 @@ class ProductItem(BaseModel):
 class ProductRequest(BaseModel):
     language: str
     session_id: str
+    ingredients: List[str]
 
 
 class ProductResponseData(BaseModel):
